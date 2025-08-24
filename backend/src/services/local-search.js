@@ -1,11 +1,14 @@
 import { marked } from 'marked';
 import fs from 'node:fs';
 import path from 'node:path';
+import { processText } from '../utils/nlp.js';
 
 class LocalSearchService {
     constructor() {
-        this.searchIndex = new Map();
+        this.searchIndex = new Map(); // word -> Map(sectionId -> { tf, documentId, title, sectionNumber })
         this.documents = new Map();
+        this.sectionWordCounts = new Map();
+        this.totalSections = 0;
         this.initialized = false;
     }
 
@@ -126,39 +129,29 @@ class LocalSearchService {
 
     indexDocument(documentId, sections) {
         for (const section of sections) {
-            const words = this.extractKeywords(section.title + ' ' + section.content);
-            
-            for (const word of words) {
+            const baseText = section.title + ' ' + section.content;
+            const tokens = processText(baseText);
+            const maritimeTerms = this.extractMaritimeTerms(baseText);
+            const allTokens = tokens.concat(maritimeTerms);
+            this.sectionWordCounts.set(section.id, allTokens.length);
+            const counts = new Map();
+            for (const token of allTokens) {
+                counts.set(token, (counts.get(token) || 0) + 1);
+            }
+            for (const [word, count] of counts) {
                 if (!this.searchIndex.has(word)) {
-                    this.searchIndex.set(word, []);
+                    this.searchIndex.set(word, new Map());
                 }
-                
-                this.searchIndex.get(word).push({
+                this.searchIndex.get(word).set(section.id, {
                     documentId: documentId,
                     sectionId: section.id,
                     title: section.title,
-                    relevanceScore: this.calculateRelevanceScore(word, section),
-                    sectionNumber: section.sectionNumber
+                    sectionNumber: section.sectionNumber,
+                    tf: count
                 });
             }
+            this.totalSections += 1;
         }
-    }
-
-    extractKeywords(text) {
-        // Convert to lowercase and extract meaningful words
-        const words = text.toLowerCase()
-            .replace(/[^\w\s]/g, ' ')
-            .split(/\s+/)
-            .filter(word => 
-                word.length > 2 && 
-                !this.isStopWord(word) &&
-                !word.match(/^\d+$/) // Filter pure numbers
-            );
-
-        // Add important maritime terms and phrases
-        const maritimeTerms = this.extractMaritimeTerms(text);
-        
-        return [...new Set([...words, ...maritimeTerms])];
     }
 
     extractMaritimeTerms(text) {
@@ -184,88 +177,41 @@ class LocalSearchService {
         return terms;
     }
 
-    isStopWord(word) {
-        const stopWords = new Set([
-            'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 
-            'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'have', 
-            'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
-            'may', 'might', 'must', 'shall', 'can', 'this', 'that', 'these', 'those'
-        ]);
-        return stopWords.has(word);
-    }
-
-    calculateRelevanceScore(word, section) {
-        let score = 0;
-        
-        // Higher score for matches in title
-        if (section.title.toLowerCase().includes(word)) {
-            score += 0.5;
-        }
-        
-        // Higher score for section numbers
-        if (section.sectionNumber && section.sectionNumber.includes(word)) {
-            score += 0.3;
-        }
-        
-        // Score based on word frequency in content
-        const wordCount = (section.content.toLowerCase().match(new RegExp(word, 'g')) || []).length;
-        score += Math.min(wordCount * 0.1, 0.8);
-        
-        // Higher score for shorter sections (more focused content)
-        if (section.wordCount < 100) {
-            score += 0.2;
-        }
-        
-        return Math.min(score, 1.0);
-    }
-
     async search(query, options = {}) {
         if (!this.initialized) {
             await this.initialize();
         }
 
-        const { maxResults = 10, minRelevanceScore = 0.1, sources = [] } = options;
-        const queryWords = this.extractKeywords(query);
+        const { maxResults = 10, sources = [] } = options;
+        const queryTokens = new Set(processText(query));
         const results = new Map();
 
-        // Find matching sections
-        for (const word of queryWords) {
-            if (this.searchIndex.has(word)) {
-                const matches = this.searchIndex.get(word);
-                
-                for (const match of matches) {
-                    // Apply source filter if specified
-                    if (sources.length > 0 && !sources.includes(match.documentId)) {
-                        continue;
-                    }
-
-                    if (!results.has(match.sectionId)) {
-                        results.set(match.sectionId, {
-                            ...match,
-                            totalScore: 0,
-                            matchingWords: []
-                        });
-                    }
-                    
-                    const result = results.get(match.sectionId);
-                    result.totalScore += match.relevanceScore;
-                    result.matchingWords.push(word);
+        for (const term of queryTokens) {
+            if (!this.searchIndex.has(term)) continue;
+            const postings = this.searchIndex.get(term);
+            const df = postings.size;
+            const idf = Math.log((this.totalSections + 1) / (df + 1)) + 1;
+            for (const [sectionId, data] of postings) {
+                if (sources.length > 0 && !sources.includes(data.documentId)) continue;
+                const tf = data.tf / this.sectionWordCounts.get(sectionId);
+                const score = tf * idf;
+                if (!results.has(sectionId)) {
+                    results.set(sectionId, { ...data, score });
+                } else {
+                    results.get(sectionId).score += score;
                 }
             }
         }
 
-        // Convert to array, filter, and sort
         const sortedResults = Array.from(results.values())
-            .filter(result => result.totalScore >= minRelevanceScore)
-            .sort((a, b) => b.totalScore - a.totalScore)
+            .sort((a, b) => b.score - a.score)
             .slice(0, maxResults);
 
-        // Enhance results with full content
         return sortedResults.map(result => ({
             ...result,
             content: this.getFullSectionContent(result.documentId, result.sectionId),
             source: this.getSourceInfo(result.documentId),
-            confidence: Math.round(Math.min(result.totalScore * 100, 95))
+            confidence: Math.round(Math.min(result.score * 100, 95))
         }));
     }
 
