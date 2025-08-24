@@ -15,6 +15,7 @@ class SearchViewModel: ObservableObject {
     private let weatherService: WeatherService
     private var cancellables = Set<AnyCancellable>()
     private var searchTask: Task<Void, Never>?
+    private let bookmarkService = BookmarkService()
     
     let exampleQueries = [
         "What are fire detection requirements for OSVs?",
@@ -274,16 +275,8 @@ class SearchViewModel: ObservableObject {
     // MARK: - Bookmark Support
     
     func bookmarkResult(_ result: SearchResult) {
-        // Save to library
-        var bookmarks = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] ?? []
-        
-        if let encoded = try? JSONEncoder().encode(result) {
-            bookmarks.append(encoded)
-            UserDefaults.standard.set(bookmarks, forKey: "BookmarkedSearches")
-            
-            // Post notification for Library to update
-            NotificationCenter.default.post(name: NSNotification.Name("SearchBookmarked"), object: result)
-        }
+        bookmarkService.save(result, forKey: "BookmarkedSearches")
+        NotificationCenter.default.post(name: NSNotification.Name("SearchBookmarked"), object: result)
     }
     
     // MARK: - Debounced Search
