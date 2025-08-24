@@ -33,6 +33,7 @@ class SearchViewModel: ObservableObject {
         self.weatherService = weatherService
         loadRecentSearches()
         setupSearchDebounce()
+        cleanCorruptedBookmarks() // Clean up any corrupted bookmarks on startup
     }
     
     // MARK: - Search Actions
@@ -256,12 +257,73 @@ class SearchViewModel: ObservableObject {
     
     // MARK: - Bookmark Support
     
+    func clearAllBookmarks() {
+        UserDefaults.standard.removeObject(forKey: "BookmarkedSearches")
+        print("🗑️ Cleared all bookmarked searches")
+        NotificationCenter.default.post(name: NSNotification.Name("SearchBookmarkRemoved"), object: nil)
+    }
+    
+    func cleanCorruptedBookmarks() {
+        guard let dataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] else { return }
+        
+        // Decode all bookmarks and filter out corrupted/duplicate/unknown ones
+        var seenIds = Set<String>()
+        let cleanBookmarks = dataArray.compactMap { data -> Data? in
+            do {
+                let result = try JSONDecoder().decode(SearchResult.self, from: data)
+                
+                // Skip "Unknown Query" bookmarks
+                if result.query == "Unknown Query" {
+                    print("🧹 Removing 'Unknown Query' bookmark")
+                    return nil
+                }
+                
+                // Skip duplicate IDs
+                if seenIds.contains(result.id) {
+                    print("🧹 Removing duplicate bookmark ID: \\(result.id)")
+                    return nil
+                }
+                
+                seenIds.insert(result.id)
+                return data // Keep valid, unique bookmarks
+            } catch {
+                print("🧹 Removing corrupted bookmark: \\(error)")
+                return nil // Remove corrupted bookmarks
+            }
+        }
+        
+        UserDefaults.standard.set(cleanBookmarks, forKey: "BookmarkedSearches")
+        print("🧹 Cleaned bookmarks: \\(dataArray.count) → \\(cleanBookmarks.count) (removed duplicates and 'Unknown Query' items)")
+        NotificationCenter.default.post(name: NSNotification.Name("SearchBookmarkRemoved"), object: nil)
+    }
+    
     func bookmarkResult(_ result: SearchResult) {
         // Save to UserDefaults temporarily until BookmarkService is properly added to target
         var existingBookmarks = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] ?? []
-        if let data = try? JSONEncoder().encode(result) {
+        
+        // Check if already bookmarked to avoid duplicates
+        let existingResults = existingBookmarks.compactMap { data in
+            do {
+                return try JSONDecoder().decode(SearchResult.self, from: data)
+            } catch {
+                print("⚠️ Failed to decode existing bookmark: \(error)")
+                return nil
+            }
+        }
+        if existingResults.contains(where: { $0.id == result.id }) {
+            print("⚠️ Search result already bookmarked: \(result.query)")
+            return
+        }
+        
+        do {
+            let data = try JSONEncoder().encode(result)
             existingBookmarks.append(data)
             UserDefaults.standard.set(existingBookmarks, forKey: "BookmarkedSearches")
+            print("✅ Bookmarked search result: \(result.query)")
+            print("✅ Total bookmarks now: \(existingBookmarks.count)")
+        } catch {
+            print("❌ Failed to encode search result for bookmarking: \(error)")
+            print("❌ Result details: query='\(result.query)', citations=\(result.citations.count)")
         }
         NotificationCenter.default.post(name: NSNotification.Name("SearchBookmarked"), object: result)
     }

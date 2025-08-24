@@ -352,16 +352,7 @@ struct SearchView: View {
             }
             
             // Subtle swipe hint
-            HStack {
-                Spacer()
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left")
-                        .font(.caption2)
-                    Text("Swipe left to clear")
-                        .font(.caption2)
-                }
-                .foregroundColor(.secondary.opacity(0.6))
-            }
+
         }
     }
     
@@ -750,6 +741,7 @@ struct SearchResultCard: View {
     let onBookmark: () -> Void
     
     @State private var isExpanded = false
+    @State private var isBookmarked = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -772,10 +764,19 @@ struct SearchResultCard: View {
                 
                 Spacer()
                 
-                Button(action: onBookmark) {
-                    Image(systemName: "bookmark")
+                Button(action: {
+                    if isBookmarked {
+                        // Remove bookmark
+                        removeBookmark()
+                    } else {
+                        // Add bookmark
+                        onBookmark()
+                    }
+                    isBookmarked.toggle()
+                }) {
+                    Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                         .font(.title3)
-                        .foregroundColor(.blue)
+                        .foregroundColor(isBookmarked ? .blue : .secondary)
                 }
             }
             
@@ -849,6 +850,34 @@ struct SearchResultCard: View {
         .background(.regularMaterial)
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+        .onAppear {
+            checkIfBookmarked()
+        }
+    }
+    
+    private func checkIfBookmarked() {
+        guard let dataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] else {
+            isBookmarked = false
+            return
+        }
+        let bookmarks = dataArray.compactMap { try? JSONDecoder().decode(SearchResult.self, from: $0) }
+        isBookmarked = bookmarks.contains { $0.id == result.id }
+    }
+    
+    private func removeBookmark() {
+        guard var dataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] else { return }
+        
+        // Filter out the bookmark with matching ID
+        dataArray = dataArray.filter { data in
+            guard let bookmark = try? JSONDecoder().decode(SearchResult.self, from: data) else { return true }
+            return bookmark.id != result.id
+        }
+        
+        UserDefaults.standard.set(dataArray, forKey: "BookmarkedSearches")
+        print("🗑️ Removed bookmark for: \(result.query)")
+        
+        // Notify LibraryView to refresh
+        NotificationCenter.default.post(name: NSNotification.Name("SearchBookmarkRemoved"), object: result)
     }
 }
 

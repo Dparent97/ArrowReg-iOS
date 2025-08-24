@@ -85,6 +85,24 @@ struct SearchResult: Codable, Identifiable {
     let isOffline: Bool
     let timestamp: Date
     
+    // Custom decoding to handle legacy bookmarks without query field
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(String.self, forKey: .id)
+        query = try container.decodeIfPresent(String.self, forKey: .query) ?? "Unknown Query"
+        answer = try container.decode(String.self, forKey: .answer)
+        citations = try container.decode([Citation].self, forKey: .citations)
+        confidence = try container.decode(Int.self, forKey: .confidence)
+        isComplete = try container.decode(Bool.self, forKey: .isComplete)
+        isOffline = try container.decode(Bool.self, forKey: .isOffline)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+    }
+    
+    private enum CodingKeys: String, CodingKey {
+        case id, query, answer, citations, confidence, isComplete, isOffline, timestamp
+    }
+    
     init(id: String = UUID().uuidString, query: String = "", answer: String = "", citations: [Citation] = [], confidence: Int = 0, isComplete: Bool = false, isOffline: Bool = false) {
         self.id = id
         self.query = query

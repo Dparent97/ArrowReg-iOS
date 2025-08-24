@@ -60,14 +60,45 @@ struct LibraryView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SearchBookmarked"))) { _ in
                 // Load from UserDefaults temporarily
-                if let dataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] {
-                    bookmarkedSearches = dataArray.compactMap { try? JSONDecoder().decode(SearchResult.self, from: $0) }
+                DispatchQueue.main.async {
+                    print("📚 LibraryView: Received SearchBookmarked notification")
+                    if let dataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] {
+                        print("📚 LibraryView: Found \(dataArray.count) bookmarked items in UserDefaults")
+                        bookmarkedSearches = dataArray.compactMap { data in
+                            do {
+                                return try JSONDecoder().decode(SearchResult.self, from: data)
+                            } catch {
+                                print("📚 LibraryView: Failed to decode bookmark: \(error)")
+                                return nil
+                            }
+                        }
+                        print("📚 LibraryView: Successfully decoded \(bookmarkedSearches.count) search results")
+                    } else {
+                        print("📚 LibraryView: No bookmarked searches found in UserDefaults")
+                    }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ArticleBookmarked"))) { _ in
                 // Load from UserDefaults temporarily
                 if let dataArray = UserDefaults.standard.array(forKey: "BookmarkedArticles") as? [Data] {
                     bookmarkedArticles = dataArray.compactMap { try? JSONDecoder().decode(BookmarkedArticle.self, from: $0) }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SearchBookmarkRemoved"))) { _ in
+                // Reload bookmarks when one is removed - ensure main thread
+                DispatchQueue.main.async {
+                    print("📚 LibraryView: Received SearchBookmarkRemoved notification")
+                    if let dataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] {
+                        bookmarkedSearches = dataArray.compactMap { data in
+                            do {
+                                return try JSONDecoder().decode(SearchResult.self, from: data)
+                            } catch {
+                                print("❌ LibraryView: Failed to decode bookmark after removal: \\(error)")
+                                return nil
+                            }
+                        }
+                        print("📚 LibraryView: Updated to \\(bookmarkedSearches.count) bookmarked searches after removal")
+                    }
                 }
             }
         }
@@ -112,7 +143,11 @@ struct LibraryView: View {
                     .padding(.top, 60)
                 } else {
                     ForEach(bookmarkedSearches) { result in
-                        BookmarkedSearchCard(result: result)
+                        BookmarkedSearchCard(result: result, onDelete: {
+                            deleteBookmark(result)
+                        }, onViewResult: {
+                            viewSearchResult(result)
+                        })
                     }
                 }
             }
@@ -187,12 +222,52 @@ struct LibraryView: View {
     private func loadAllContent() async {
         await viewModel.loadSavedQueries()
         // Load from UserDefaults temporarily
-        if let searchDataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] {
-            bookmarkedSearches = searchDataArray.compactMap { try? JSONDecoder().decode(SearchResult.self, from: $0) }
+        await MainActor.run {
+            print("📚 LibraryView: Loading all content...")
+            if let searchDataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] {
+                print("📚 LibraryView: Found \(searchDataArray.count) bookmarked search items on load")
+                bookmarkedSearches = searchDataArray.compactMap { data in
+                do {
+                    return try JSONDecoder().decode(SearchResult.self, from: data)
+                } catch {
+                    print("📚 LibraryView: Failed to decode bookmark on load: \(error)")
+                    return nil
+                }
+            }
+            print("📚 LibraryView: Loaded \(bookmarkedSearches.count) bookmarked searches")
+            } else {
+                print("📚 LibraryView: No bookmarked searches found on load")
+            }
+            if let articleDataArray = UserDefaults.standard.array(forKey: "BookmarkedArticles") as? [Data] {
+                bookmarkedArticles = articleDataArray.compactMap { try? JSONDecoder().decode(BookmarkedArticle.self, from: $0) }
+            }
         }
-        if let articleDataArray = UserDefaults.standard.array(forKey: "BookmarkedArticles") as? [Data] {
-            bookmarkedArticles = articleDataArray.compactMap { try? JSONDecoder().decode(BookmarkedArticle.self, from: $0) }
+    }
+    
+    private func deleteBookmark(_ result: SearchResult) {
+        // Remove from UserDefaults
+        guard var dataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] else { return }
+        
+        dataArray = dataArray.filter { data in
+            guard let bookmark = try? JSONDecoder().decode(SearchResult.self, from: data) else { return true }
+            return bookmark.id != result.id
         }
+        
+        UserDefaults.standard.set(dataArray, forKey: "BookmarkedSearches")
+        
+        // Update local state on main thread
+        DispatchQueue.main.async {
+            bookmarkedSearches.removeAll { $0.id == result.id }
+        }
+        
+        print("🗑️ Deleted bookmark: \\(result.query)")
+    }
+    
+    private func viewSearchResult(_ result: SearchResult) {
+        // Copy query to clipboard for now - in production this would navigate to Search tab
+        UIPasteboard.general.string = result.query
+        print("📋 Copied query to clipboard: \\(result.query)")
+        // TODO: Navigate to Search tab and populate with this query
     }
 }
 
@@ -222,12 +297,24 @@ struct BookmarkedArticle: Identifiable, Codable {
 // MARK: - Bookmarked Cards
 struct BookmarkedSearchCard: View {
     let result: SearchResult
+    let onDelete: () -> Void
+    let onViewResult: () -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(result.query)
-                .font(.headline)
-                .lineLimit(1)
+            HStack {
+                Text(result.query)
+                    .font(.headline)
+                    .lineLimit(1)
+                
+                Spacer()
+                
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+            }
             
             Text(result.answer)
                 .font(.body)
@@ -241,9 +328,11 @@ struct BookmarkedSearchCard: View {
                 
                 Spacer()
                 
-                Text("Search Result")
-                    .font(.caption)
-                    .foregroundColor(.blue)
+                Button(action: onViewResult) {
+                    Text("View Result")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                }
             }
         }
         .padding()
@@ -298,61 +387,50 @@ class SavedQueriesViewModel: ObservableObject {
     func loadSavedQueries() async {
         isLoading = true
         
-        // Simulate loading delay
-        try? await Task.sleep(nanoseconds: 500_000_000)
-        
-        // Mock data for now
-        savedQueries = [
-            SavedQuery(
-                title: "OSV Fire Safety Requirements",
-                query: "What are the fire detection and suppression requirements for offshore supply vessels?",
-                mode: .qa,
-                lastRunAt: Date().addingTimeInterval(-86400),
-                snapshot: [
-                    SnapshotItem(
-                        regulation: "46 CFR 109.213",
-                        title: "Fire detection systems",
-                        summary: "Requirements for automatic fire detection in machinery and accommodation spaces"
-                    ),
-                    SnapshotItem(
-                        regulation: "46 CFR 109.215",
-                        title: "Fire suppression systems",
-                        summary: "Fixed fire extinguishing system requirements for various vessel spaces"
-                    )
-                ]
-            ),
-            SavedQuery(
-                title: "Oil Discharge Monitoring",
-                query: "What are the requirements for oil discharge monitoring systems?",
-                mode: .qa,
-                lastRunAt: Date().addingTimeInterval(-172800),
-                snapshot: [
-                    SnapshotItem(
-                        regulation: "33 CFR 151.10",
-                        title: "Oil discharge prohibition",
-                        summary: "General prohibition on oil discharge from vessels"
-                    )
-                ]
-            )
-        ]
+        // Load from UserDefaults - production ready
+        if let data = UserDefaults.standard.data(forKey: "SavedQueries"),
+           let queries = try? JSONDecoder().decode([SavedQuery].self, from: data) {
+            savedQueries = queries
+            print("📚 Loaded \\(queries.count) saved queries from UserDefaults")
+        } else {
+            // No saved queries found - start with empty array
+            savedQueries = []
+            print("📚 No saved queries found - starting fresh")
+        }
         
         isLoading = false
     }
     
+    func clearAllSavedQueries() {
+        savedQueries = []
+        UserDefaults.standard.removeObject(forKey: "SavedQueries")
+        print("🗑️ Cleared all saved queries")
+    }
+    
     func addSavedQuery(_ query: SavedQuery) {
         savedQueries.insert(query, at: 0)
-        // In real implementation, save to CloudKit/Core Data
+        saveToPersistence()
     }
     
     func deleteSavedQuery(_ query: SavedQuery) {
         savedQueries.removeAll { $0.id == query.id }
-        // In real implementation, delete from CloudKit/Core Data
+        saveToPersistence()
+    }
+    
+    private func saveToPersistence() {
+        do {
+            let data = try JSONEncoder().encode(savedQueries)
+            UserDefaults.standard.set(data, forKey: "SavedQueries")
+            print("💾 Saved \\(savedQueries.count) queries to UserDefaults")
+        } catch {
+            print("❌ Failed to save queries: \\(error)")
+        }
     }
 }
 
 // MARK: - Supporting Models
 
-struct SavedQuery: Identifiable {
+struct SavedQuery: Identifiable, Codable {
     let id: UUID
     let title: String
     let query: String
@@ -379,7 +457,7 @@ struct SavedQuery: Identifiable {
     }
 }
 
-struct SnapshotItem: Identifiable {
+struct SnapshotItem: Identifiable, Codable {
     let id = UUID()
     let regulation: String
     let title: String
