@@ -7,7 +7,7 @@ class SearchViewModel: ObservableObject {
     @Published var results: [SearchResult] = []
     @Published var isSearching = false
     @Published var filters = SearchFilters()
-    @Published var recentSearches: [String] = []
+    @Published private(set) var recentSearches: [String] = []
     @Published var error: SearchError?
     @Published var showingError = false
     
@@ -30,7 +30,10 @@ class SearchViewModel: ObservableObject {
     init(searchService: SearchService = SearchService.shared, weatherService: WeatherService = WeatherService.shared) {
         self.searchService = searchService
         self.weatherService = weatherService
-        loadRecentSearches()
+
+        searchService.$searchHistory
+            .assign(to: &$recentSearches)
+
         setupSearchDebounce()
     }
     
@@ -42,8 +45,7 @@ class SearchViewModel: ObservableObject {
         }
         
         let trimmedQuery = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        saveToRecentSearches(trimmedQuery)
-        
+
         isSearching = true
         error = nil
         
@@ -85,8 +87,7 @@ class SearchViewModel: ObservableObject {
         }
         
         let trimmedQuery = followUpQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        saveToRecentSearches(trimmedQuery)
-        
+
         isSearching = true
         error = nil
         
@@ -131,8 +132,7 @@ class SearchViewModel: ObservableObject {
         SearchService.shared.startNewConversation()
         
         let trimmedQuery = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        saveToRecentSearches(trimmedQuery)
-        
+
         isSearching = true
         error = nil
         results = []
@@ -249,26 +249,6 @@ class SearchViewModel: ObservableObject {
                 // Could trigger auto-suggestions here
             }
             .store(in: &cancellables)
-    }
-    
-    private func saveToRecentSearches(_ query: String) {
-        // Remove if already exists
-        recentSearches.removeAll { $0 == query }
-        
-        // Add to beginning
-        recentSearches.insert(query, at: 0)
-        
-        // Keep only last 10
-        if recentSearches.count > 10 {
-            recentSearches = Array(recentSearches.prefix(10))
-        }
-        
-        // Save to UserDefaults
-        UserDefaults.standard.set(recentSearches, forKey: "RecentSearches")
-    }
-    
-    private func loadRecentSearches() {
-        recentSearches = UserDefaults.standard.stringArray(forKey: "RecentSearches") ?? []
     }
     
     // MARK: - Bookmark Support

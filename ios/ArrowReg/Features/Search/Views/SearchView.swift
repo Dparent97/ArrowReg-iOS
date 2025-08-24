@@ -575,13 +575,9 @@ struct HistoryTray: View {
     
     private func deleteHistoryItem(at index: Int) {
         guard index < searchService.searchHistory.count else { return }
-        
+
         withAnimation {
-            var history = searchService.searchHistory
-            history.remove(at: index)
-            
-            UserDefaults.standard.set(history, forKey: "SearchHistory")
-            searchService.searchHistory = history
+            searchService.removeHistoryItem(at: index)
         }
     }
 }

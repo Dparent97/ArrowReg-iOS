@@ -176,7 +176,13 @@ class SearchService: ObservableObject {
         searchHistory.removeAll()
         UserDefaults.standard.removeObject(forKey: "SearchHistory")
     }
-    
+
+    func removeHistoryItem(at index: Int) {
+        guard index < searchHistory.count else { return }
+        searchHistory.remove(at: index)
+        UserDefaults.standard.set(searchHistory, forKey: "SearchHistory")
+    }
+
     // MARK: - Search Methods
     
     func search(_ request: SearchRequest) async throws -> SearchResult {
@@ -291,6 +297,8 @@ class SearchService: ObservableObject {
     }
     
     func searchFollowUp(_ request: SearchRequest) async throws -> SearchResult {
+        saveToHistory(request.query)
+
         // Local mode: not supported for follow-ups
         if !isOnlineMode {
             throw SearchError.serverError("Follow-up questions require Online mode")
@@ -371,6 +379,7 @@ class SearchService: ObservableObject {
     }
     
     func streamSearch(_ request: SearchRequest) -> AsyncThrowingStream<SearchChunk, Error> {
+        saveToHistory(request.query)
         return AsyncThrowingStream { continuation in
             Task {
                 do {
