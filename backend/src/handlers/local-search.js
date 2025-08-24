@@ -1,4 +1,5 @@
 import LocalSearchService from '../services/local-search.js';
+import { startStream, sendEvent, closeStream } from '../utils/sse.js';
 
 const localSearchService = new LocalSearchService();
 
@@ -185,34 +186,32 @@ function generateId() {
     return 'local_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 }
 
-export async function handleLocalStreamSearch(request) {
-    // For streaming, we'll simulate the stream but return results faster
-    return {
-        async *stream() {
-            yield { type: 'content', data: 'Searching local regulations...\n\n' };
-            
-            // Small delay to show searching state
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const result = await handleLocalSearch(request);
-            
-            // Stream the answer word by word for consistency with OpenAI
-            const words = result.answer.split(' ');
-            const chunkSize = 8;
-            
-            for (let i = 0; i < words.length; i += chunkSize) {
-                const chunk = words.slice(i, i + chunkSize).join(' ') + ' ';
-                yield { type: 'content', data: chunk };
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-            
-            // Send citations
-            for (const citation of result.citations) {
-                yield { type: 'citation', data: citation };
-            }
-            
-            yield { type: 'confidence', data: result.confidence };
-            yield { type: 'done', data: null };
+export function handleLocalStreamSearch(request) {
+    return startStream(async (controller, encoder) => {
+        sendEvent(controller, encoder, 'content', 'Searching local regulations...\n\n');
+
+        // Small delay to show searching state
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const result = await handleLocalSearch(request);
+
+        // Stream the answer word by word for consistency with OpenAI
+        const words = result.answer.split(' ');
+        const chunkSize = 8;
+
+        for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize).join(' ') + ' ';
+            sendEvent(controller, encoder, 'content', chunk);
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
-    };
+
+        // Send citations
+        for (const citation of result.citations) {
+            sendEvent(controller, encoder, 'citation', citation);
+        }
+
+        sendEvent(controller, encoder, 'confidence', result.confidence);
+        sendEvent(controller, encoder, 'done', null);
+        closeStream(controller);
+    });
 }

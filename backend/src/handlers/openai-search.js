@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
-import { handleLocalSearch, handleLocalStreamSearch } from './local-search.js';
+import { handleLocalSearch } from './local-search.js';
+import { startStream, sendEvent, closeStream } from '../utils/sse.js';
 
 /**
  * OpenAI-powered maritime compliance search handler
@@ -458,94 +459,45 @@ export async function handleStreamingSearch(request, env) {
  * Stream local search results as Server-Sent Events
  */
 async function streamLocalSearchResponse(searchRequest) {
-  try {
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          // Perform local search
-          const result = await handleLocalSearch(searchRequest);
-          
-          // Stream initial searching message
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'content',
-            data: 'Searching offline regulation documents...\n\n'
-          })}\n\n`));
-          
-          // Small delay
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
-          // Stream the answer word by word
-          if (result.answer) {
-            const words = result.answer.split(' ');
-            const chunkSize = 5;
-            
-            for (let i = 0; i < words.length; i += chunkSize) {
-              const chunk = words.slice(i, i + chunkSize).join(' ') + ' ';
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'content',
-                data: chunk
-              })}\n\n`));
-              
-              // Small delay for realistic streaming
-              await new Promise(resolve => setTimeout(resolve, 50));
-            }
-          }
-          
-          // Stream citations
-          for (const citation of result.citations || []) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              type: 'citation',
-              data: citation
-            })}\n\n`));
-          }
-          
-          // Stream confidence
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'confidence',
-            data: result.confidence
-          })}\n\n`));
-          
-          // Signal completion
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'done',
-            data: null
-          })}\n\n`));
-          
-          controller.close();
-          
-        } catch (error) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'error',
-            data: `Local search error: ${error.message}`
-          })}\n\n`));
-          controller.close();
-        }
-      }
-    });
+  return startStream(async (controller, encoder) => {
+    try {
+      // Perform local search
+      const result = await handleLocalSearch(searchRequest);
 
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      }
-    });
-    
-  } catch (error) {
-    console.error('Local streaming error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+      // Stream initial searching message
+      sendEvent(controller, encoder, 'content', 'Searching offline regulation documents...\n\n');
+
+      // Small delay
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Stream the answer word by word
+      if (result.answer) {
+        const words = result.answer.split(' ');
+        const chunkSize = 5;
+
+        for (let i = 0; i < words.length; i += chunkSize) {
+          const chunk = words.slice(i, i + chunkSize).join(' ') + ' ';
+          sendEvent(controller, encoder, 'content', chunk);
+          // Small delay for realistic streaming
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
       }
-    );
-  }
+
+      // Stream citations
+      for (const citation of result.citations || []) {
+        sendEvent(controller, encoder, 'citation', citation);
+      }
+
+      // Stream confidence
+      sendEvent(controller, encoder, 'confidence', result.confidence);
+
+      // Signal completion
+      sendEvent(controller, encoder, 'done', null);
+    } catch (error) {
+      sendEvent(controller, encoder, 'error', `Local search error: ${error.message}`);
+    } finally {
+      closeStream(controller);
+    }
+  });
 }
+
