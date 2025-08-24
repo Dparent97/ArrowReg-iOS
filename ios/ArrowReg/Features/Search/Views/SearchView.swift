@@ -1,14 +1,45 @@
 import SwiftUI
 
+struct ClearOnSwipeGesture: ViewModifier {
+    let action: () -> Void
+    @State private var hasTriggeredHaptic = false
+
+    func body(content: Content) -> some View {
+        content.gesture(
+            DragGesture()
+                .onChanged { value in
+                    if value.translation.width < -50 && !hasTriggeredHaptic {
+                        hasTriggeredHaptic = true
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.impactOccurred()
+                    }
+                }
+                .onEnded { value in
+                    hasTriggeredHaptic = false
+                    if value.translation.width < -100 {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            action()
+                        }
+                    }
+                }
+        )
+    }
+}
+
+extension View {
+    func clearOnSwipeGesture(action: @escaping () -> Void) -> some View {
+        modifier(ClearOnSwipeGesture(action: action))
+    }
+}
+
 struct SearchView: View {
     @StateObject private var viewModel = SearchViewModel()
     @StateObject private var searchService = SearchService.shared
     @FocusState private var isSearchFieldFocused: Bool
-    
+
     // UI State
     @State private var showingOptions = false
     @State private var showingHistory = false
-    @State private var hasTriggeredHaptic = false
     @State private var followUpQuery = ""
     @State private var showingFollowUpInput = false
     
@@ -124,28 +155,9 @@ struct SearchView: View {
                                 viewModel.bookmarkResult(result)
                             }
                             .id(result.id)
-                            .gesture(
-                                DragGesture()
-                                    .onChanged { value in
-                                        // Provide haptic feedback during drag
-                                        if value.translation.width < -50 && !hasTriggeredHaptic {
-                                            hasTriggeredHaptic = true
-                                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                                            impactFeedback.impactOccurred()
-                                        }
-                                    }
-                                    .onEnded { value in
-                                        // Reset haptic trigger
-                                        hasTriggeredHaptic = false
-                                        
-                                        // Swipe left to clear search and return to home
-                                        if value.translation.width < -100 {
-                                            withAnimation(.easeInOut(duration: 0.3)) {
-                                                clearPage()
-                                            }
-                                        }
-                                    }
-                            )
+                            .clearOnSwipeGesture {
+                                clearPage()
+                            }
                         }
                     }
                     }
@@ -158,29 +170,9 @@ struct SearchView: View {
                     }
                 }
             }
-            .gesture(
-                // Global swipe gesture for empty areas
-                DragGesture()
-                    .onChanged { value in
-                        // Provide haptic feedback during drag
-                        if value.translation.width < -50 && !hasTriggeredHaptic {
-                            hasTriggeredHaptic = true
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                            impactFeedback.impactOccurred()
-                        }
-                    }
-                    .onEnded { value in
-                        // Reset haptic trigger
-                        hasTriggeredHaptic = false
-                        
-                        // Swipe left to clear search and return to home
-                        if value.translation.width < -100 {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                clearPage()
-                            }
-                        }
-                    }
-            )
+            .clearOnSwipeGesture {
+                clearPage()
+            }
         }
     }
     
