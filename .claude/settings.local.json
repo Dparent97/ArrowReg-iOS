@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(gh pr close:*)"
+      "Bash(gh pr close:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
