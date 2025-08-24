@@ -114,31 +114,35 @@ struct SearchView: View {
                 .padding()
                 .background(.ultraThinMaterial)
             
-            // Results content
-            ScrollView(.vertical, showsIndicators: true) {
-                ScrollViewReader { proxy in
-                    LazyVStack(spacing: 16) {
-                        // Top anchor point for scroll-to-top
-                        Color.clear
-                            .frame(height: 1)
-                            .id("top")
-                            .onAppear {
-                                // Store the scroll action when the view appears
-                                scrollAction = {
-                                    withAnimation(.easeInOut(duration: 0.6)) {
-                                        proxy.scrollTo("top", anchor: .top)
+            // Results content - handle multi-turn vs single result differently
+            Group {
+                if viewModel.isSearching {
+                    ScrollView(.vertical, showsIndicators: true) {
+                        searchingView
+                            .padding()
+                            .id("searching")
+                    }
+                } else if viewModel.results.count > 1 {
+                    // Multi-turn conversation - use PagingView without ScrollView wrapper
+                    conversationPagesView
+                } else {
+                    // Single result - use ScrollView for traditional card view
+                    ScrollView(.vertical, showsIndicators: true) {
+                        ScrollViewReader { proxy in
+                            LazyVStack(spacing: 16) {
+                                // Top anchor point for scroll-to-top
+                                Color.clear
+                                    .frame(height: 1)
+                                    .id("top")
+                                    .onAppear {
+                                        // Store the scroll action when the view appears
+                                        scrollAction = {
+                                            withAnimation(.easeInOut(duration: 0.6)) {
+                                                proxy.scrollTo("top", anchor: .top)
+                                            }
+                                        }
                                     }
-                                }
-                            }
-                        
-                        if viewModel.isSearching {
-                            searchingView
-                                .id("searching")
-                        } else {
-                            // Multi-turn conversation navigation
-                            if viewModel.results.count > 1 {
-                                conversationPagesView
-                            } else {
+                                
                                 // Single result - use traditional card view
                                 ForEach(viewModel.results, id: \.id) { result in
                                     SearchResultCard(result: result) {
@@ -150,55 +154,54 @@ struct SearchView: View {
                                     }
                                 }
                             }
-                        }
-                    }
-                    .padding()
-                    .padding(.bottom, 20) // Extra bottom padding for better scrolling
-                    
-                    // Follow-up question section
-                    if !viewModel.results.isEmpty && searchService.isOnlineMode && searchService.currentThreadId != nil {
-                        VStack(spacing: 12) {
-                            // Section header
-                            HStack {
-                                Image(systemName: "bubble.left.and.bubble.right")
-                                    .foregroundColor(.blue)
-                                Text("Ask a follow-up question")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                            }
-                            .padding(.horizontal)
+                            .padding()
+                            .padding(.bottom, 20) // Extra bottom padding for better scrolling
                             
-                            // Follow-up input
-                            HStack {
-                                TextField("Continue the conversation...", text: $followUpQuery)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .onSubmit {
-                                        performFollowUp()
+                            // Follow-up question section
+                            if !viewModel.results.isEmpty && searchService.isOnlineMode && searchService.currentThreadId != nil {
+                                VStack(spacing: 12) {
+                                    // Section header
+                                    HStack {
+                                        Image(systemName: "bubble.left.and.bubble.right")
+                                            .foregroundColor(.blue)
+                                        Text("Ask a follow-up question")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        Spacer()
                                     }
-                                
-                                Button(action: { performFollowUp() }) {
-                                    Image(systemName: "arrow.up.circle.fill")
-                                        .font(.title2)
-                                        .foregroundColor(followUpQuery.isEmpty ? .gray : .blue)
+                                    .padding(.horizontal)
+                                    
+                                    // Follow-up input
+                                    HStack {
+                                        TextField("Continue the conversation...", text: $followUpQuery)
+                                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                                            .onSubmit {
+                                                performFollowUp()
+                                            }
+                                        
+                                        Button(action: { performFollowUp() }) {
+                                            Image(systemName: "arrow.up.circle.fill")
+                                                .font(.title2)
+                                                .foregroundColor(followUpQuery.isEmpty ? .gray : .blue)
+                                        }
+                                        .disabled(followUpQuery.isEmpty || viewModel.isSearching)
+                                    }
+                                    .padding(.horizontal)
                                 }
-                                .disabled(followUpQuery.isEmpty || viewModel.isSearching)
+                                .padding(.vertical)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                                .padding(.horizontal)
+                                .id("followup-section")
                             }
-                            .padding(.horizontal)
+                            
+                            // Add extra bottom padding to ensure scrollability
+                            Color.clear
+                                .frame(height: 100)
+                                .id("bottom-spacer")
                         }
-                        .padding(.vertical)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                        .id("followup-section")
                     }
-                    
-                    // Add extra bottom padding to ensure scrollability
-                    Color.clear
-                        .frame(height: 100)
-                        .id("bottom-spacer")
                 }
-
             }
             .onLongPressGesture {
                 clearPage()
@@ -230,32 +233,74 @@ struct SearchView: View {
             }
             .padding(.bottom, 12)
             
-            // Conversation turns with UIPageViewController wrapper
+            // Conversation turns with UIPageViewController wrapper - each page is scrollable
             PagingView(pages: viewModel.results.enumerated().map { index, result in
-                VStack(spacing: 16) {
-                    HStack {
-                        Text(index == 0 ? "Original Question" : "Follow-up \(index)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.gray.opacity(0.1))
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(spacing: 16) {
+                        // Turn indicator
+                        HStack {
+                            Text(index == 0 ? "Original Question" : "Follow-up \(index)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(12)
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+
+                        // Search result card
+                        SearchResultCard(result: result) {
+                            viewModel.bookmarkResult(result)
+                        }
+                        .padding(.horizontal)
+                        
+                        // Follow-up question section (show on last page only)
+                        if index == viewModel.results.count - 1 && !viewModel.results.isEmpty && searchService.isOnlineMode && searchService.currentThreadId != nil {
+                            VStack(spacing: 12) {
+                                // Section header
+                                HStack {
+                                    Image(systemName: "bubble.left.and.bubble.right")
+                                        .foregroundColor(.blue)
+                                    Text("Ask a follow-up question")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+                                .padding(.horizontal)
+                                
+                                // Follow-up input
+                                HStack {
+                                    TextField("Continue the conversation...", text: $followUpQuery)
+                                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                                        .onSubmit {
+                                            performFollowUp()
+                                        }
+                                    
+                                    Button(action: { performFollowUp() }) {
+                                        Image(systemName: "arrow.up.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(followUpQuery.isEmpty ? .gray : .blue)
+                                    }
+                                    .disabled(followUpQuery.isEmpty || viewModel.isSearching)
+                                }
+                                .padding(.horizontal)
+                            }
+                            .padding(.vertical)
+                            .background(Color(.systemGray6))
                             .cornerRadius(12)
-                        Spacer()
+                            .padding(.horizontal)
+                        }
+                        
+                        // Bottom padding
+                        Color.clear.frame(height: 100)
                     }
-                    .padding(.horizontal)
-
-                    SearchResultCard(result: result) {
-                        viewModel.bookmarkResult(result)
-                    }
-                    .padding(.horizontal)
-
-                    Spacer()
+                    .padding(.top)
                 }
-                .padding(.top)
             }, currentIndex: $selectedConversationTurn)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onChange(of: selectedConversationTurn) { newValue in
+            .onChange(of: selectedConversationTurn) { _, newValue in
                 print("🔄 Switched to conversation turn \(newValue + 1) of \(viewModel.results.count)")
             }
             .onAppear {
