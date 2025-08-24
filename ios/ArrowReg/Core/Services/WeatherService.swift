@@ -38,18 +38,14 @@ class WeatherService: ObservableObject {
             let location = WeatherLocation(name: locationName, coordinate: coordinate)
             let weatherData = MaritimeWeatherData(from: response, location: location)
             
-            await MainActor.run {
-                self.currentWeatherData = weatherData
-                self.isLoading = false
-            }
+            self.currentWeatherData = weatherData
+            self.isLoading = false
             
             return weatherData
             
         } catch {
-            await MainActor.run {
-                self.error = error as? WeatherError ?? .networkError
-                self.isLoading = false
-            }
+            self.error = error as? WeatherError ?? .networkError
+            self.isLoading = false
             throw error
         }
     }
@@ -193,7 +189,7 @@ class WeatherService: ObservableObject {
     func getCurrentLocationWeather() {
         // This would typically request location permission and fetch weather
         // For now, we'll create mock data
-        Task {
+        Task { @MainActor in
             do {
                 let mockCoordinate = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
                 
@@ -201,9 +197,7 @@ class WeatherService: ObservableObject {
                 let locationName = await reverseGeocode(coordinate: mockCoordinate)
                 _ = try await fetchWeather(for: mockCoordinate, locationName: locationName)
             } catch {
-                await MainActor.run {
-                    self.error = error as? WeatherError ?? .networkError
-                }
+                self.error = error as? WeatherError ?? .networkError
             }
         }
     }

@@ -253,9 +253,7 @@ class SearchService: ObservableObject {
                     
                     // Update current thread ID for follow-up questions
                     if let threadId = backendResponse.threadId {
-                        await MainActor.run {
-                            self.currentThreadId = threadId
-                        }
+                        self.currentThreadId = threadId
                     }
                     
                     return SearchResult(

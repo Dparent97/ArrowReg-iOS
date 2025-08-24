@@ -40,27 +40,23 @@ class LibraryViewModel: ObservableObject {
         isLoading = true
         error = nil
         
-        Task {
+        Task { @MainActor in
             do {
                 async let savedItemsTask = loadSavedItems()
                 async let collectionsTask = loadCollections()
                 async let recentTask = loadRecentlyViewed()
                 
                 let (saved, collections, recent) = try await (savedItemsTask, collectionsTask, recentTask)
-                
-                await MainActor.run {
-                    self.savedItems = saved
-                    self.collections = collections
-                    self.recentlyViewed = recent
-                    self.isLoading = false
-                }
+
+                self.savedItems = saved
+                self.collections = collections
+                self.recentlyViewed = recent
+                self.isLoading = false
                 
             } catch {
-                await MainActor.run {
-                    self.error = .loadingFailed(error.localizedDescription)
-                    self.showingError = true
-                    self.isLoading = false
-                }
+                self.error = .loadingFailed(error.localizedDescription)
+                self.showingError = true
+                self.isLoading = false
             }
         }
     }

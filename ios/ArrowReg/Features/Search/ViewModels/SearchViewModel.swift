@@ -47,7 +47,7 @@ class SearchViewModel: ObservableObject {
         isSearching = true
         error = nil
         
-        Task {
+        Task { @MainActor in
             do {
                 let request = SearchRequest(
                     query: trimmedQuery,
@@ -57,24 +57,18 @@ class SearchViewModel: ObservableObject {
                 )
                 
                 let result = try await searchService.search(request)
-                
-                await MainActor.run {
-                    self.results = [result]
-                    self.isSearching = false
-                }
+
+                self.results = [result]
+                self.isSearching = false
                 
             } catch let searchError as SearchError {
-                await MainActor.run {
-                    self.error = searchError
-                    self.showingError = true
-                    self.isSearching = false
-                }
+                self.error = searchError
+                self.showingError = true
+                self.isSearching = false
             } catch {
-                await MainActor.run {
-                    self.error = .networkError
-                    self.showingError = true
-                    self.isSearching = false
-                }
+                self.error = .networkError
+                self.showingError = true
+                self.isSearching = false
             }
         }
     }
@@ -90,7 +84,7 @@ class SearchViewModel: ObservableObject {
         isSearching = true
         error = nil
         
-        Task {
+        Task { @MainActor in
             do {
                 let request = SearchRequest(
                     query: trimmedQuery,
@@ -100,24 +94,18 @@ class SearchViewModel: ObservableObject {
                 )
                 
                 let result = try await searchService.searchFollowUp(request)
-                
-                await MainActor.run {
-                    self.results.append(result)
-                    self.isSearching = false
-                }
+
+                self.results.append(result)
+                self.isSearching = false
                 
             } catch let searchError as SearchError {
-                await MainActor.run {
-                    self.error = searchError
-                    self.showingError = true
-                    self.isSearching = false
-                }
+                self.error = searchError
+                self.showingError = true
+                self.isSearching = false
             } catch {
-                await MainActor.run {
-                    self.error = .networkError
-                    self.showingError = true
-                    self.isSearching = false
-                }
+                self.error = .networkError
+                self.showingError = true
+                self.isSearching = false
             }
         }
     }
@@ -137,7 +125,7 @@ class SearchViewModel: ObservableObject {
         error = nil
         results = []
         
-        Task {
+        Task { @MainActor in
             let request = SearchRequest(
                 query: trimmedQuery,
                 mode: .qa,
@@ -149,60 +137,54 @@ class SearchViewModel: ObservableObject {
             
             do {
                 let stream = searchService.streamSearch(request)
-                
+
                 for try await chunk in stream {
-                    await MainActor.run {
-                        switch chunk {
-                        case .content(let text):
-                            currentResult.answer += text
-                            self.results = [currentResult]
-                            
-                        case .citation(let citation):
-                            currentResult.citations.append(citation)
-                            
-                        case .confidence(let confidence):
-                            currentResult = SearchResult(
-                                id: currentResult.id,
-                                query: currentResult.query,
-                                answer: currentResult.answer,
-                                citations: currentResult.citations,
-                                confidence: confidence,
-                                isComplete: false
-                            )
-                            self.results = [currentResult]
-                            
-                        case .done:
-                            currentResult = SearchResult(
-                                id: currentResult.id,
-                                query: currentResult.query,
-                                answer: currentResult.answer,
-                                citations: currentResult.citations,
-                                confidence: currentResult.confidence,
-                                isComplete: true
-                            )
-                            self.results = [currentResult]
-                            self.isSearching = false
-                            
-                        case .error(let errorMessage):
-                            self.error = .serverError(errorMessage)
-                            self.showingError = true
-                            self.isSearching = false
-                        }
+                    switch chunk {
+                    case .content(let text):
+                        currentResult.answer += text
+                        self.results = [currentResult]
+
+                    case .citation(let citation):
+                        currentResult.citations.append(citation)
+
+                    case .confidence(let confidence):
+                        currentResult = SearchResult(
+                            id: currentResult.id,
+                            query: currentResult.query,
+                            answer: currentResult.answer,
+                            citations: currentResult.citations,
+                            confidence: confidence,
+                            isComplete: false
+                        )
+                        self.results = [currentResult]
+
+                    case .done:
+                        currentResult = SearchResult(
+                            id: currentResult.id,
+                            query: currentResult.query,
+                            answer: currentResult.answer,
+                            citations: currentResult.citations,
+                            confidence: currentResult.confidence,
+                            isComplete: true
+                        )
+                        self.results = [currentResult]
+                        self.isSearching = false
+
+                    case .error(let errorMessage):
+                        self.error = .serverError(errorMessage)
+                        self.showingError = true
+                        self.isSearching = false
                     }
                 }
                 
             } catch let searchError as SearchError {
-                await MainActor.run {
-                    self.error = searchError
-                    self.showingError = true
-                    self.isSearching = false
-                }
+                self.error = searchError
+                self.showingError = true
+                self.isSearching = false
             } catch {
-                await MainActor.run {
-                    self.error = .networkError
-                    self.showingError = true
-                    self.isSearching = false
-                }
+                self.error = .networkError
+                self.showingError = true
+                self.isSearching = false
             }
         }
     }
@@ -290,14 +272,12 @@ class SearchViewModel: ObservableObject {
     
     func performDebouncedSearch(_ query: String) {
         searchTask?.cancel()
-        searchTask = Task {
+        searchTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s debounce
             guard !Task.isCancelled else { return }
-            
-            await MainActor.run {
-                searchQuery = query
-            }
-            
+
+            searchQuery = query
+
             performStreamingSearch()
         }
     }
