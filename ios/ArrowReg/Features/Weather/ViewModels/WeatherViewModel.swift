@@ -45,29 +45,23 @@ class WeatherViewModel: ObservableObject {
         error = nil
         selectedLocation = coordinate
         
-        Task {
+        Task { @MainActor in
             do {
                 // Load forecast (which includes current weather data)
                 let forecastResponse = try await weatherService.fetchForecast(for: coordinate, days: 7)
-                
-                await MainActor.run {
-                    self.currentWeather = forecastResponse
-                    self.forecast = [forecastResponse]
-                    self.isLoading = false
-                }
+
+                self.currentWeather = forecastResponse
+                self.forecast = [forecastResponse]
+                self.isLoading = false
                 
             } catch let weatherError as WeatherError {
-                await MainActor.run {
-                    self.error = weatherError
-                    self.showingError = true
-                    self.isLoading = false
-                }
+                self.error = weatherError
+                self.showingError = true
+                self.isLoading = false
             } catch {
-                await MainActor.run {
-                    self.error = .networkError
-                    self.showingError = true
-                    self.isLoading = false
-                }
+                self.error = .networkError
+                self.showingError = true
+                self.isLoading = false
             }
         }
     }
