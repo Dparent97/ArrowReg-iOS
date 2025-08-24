@@ -230,45 +230,20 @@ struct SearchView: View {
             }
             .padding(.bottom, 12)
             
-            // Conversation turns with TabView
-            TabView(selection: $selectedConversationTurn) {
-                ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, result in
-                    VStack(spacing: 16) {
-                        // Turn indicator
-                        HStack {
-                            Text(index == 0 ? "Original Question" : "Follow-up \(index)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(12)
-                            Spacer()
-                        }
-                        .padding(.horizontal)
-                        
-                        // Search result card
-                        SearchResultCard(result: result) {
-                            viewModel.bookmarkResult(result)
-                        }
-                        .padding(.horizontal)
-                        
-                        Spacer()
-                    }
-                    .padding(.top)
-                    .tag(index)
+            let pages = viewModel.results.enumerated().map { index, result in
+                ConversationPage(index: index, result: result) {
+                    viewModel.bookmarkResult(result)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .indexViewStyle(.page(backgroundDisplayMode: .never))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .allowsHitTesting(true)
-            .onChange(of: selectedConversationTurn) { newValue in
-                print("🔄 Switched to conversation turn \(newValue + 1) of \(viewModel.results.count)")
-            }
-            .onAppear {
-                print("📱 TabView appeared with \(viewModel.results.count) results, current selection: \(selectedConversationTurn)")
-            }
+
+            PageView(pages: pages, currentPage: $selectedConversationTurn)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: selectedConversationTurn) { newValue in
+                    print("🔄 Switched to conversation turn \(newValue + 1) of \(viewModel.results.count)")
+                }
+                .onAppear {
+                    print("📱 PageView appeared with \(viewModel.results.count) results, current selection: \(selectedConversationTurn)")
+                }
         }
     }
     
@@ -705,6 +680,36 @@ struct HistoryRow: View {
             onSelect()
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct ConversationPage: View {
+    let index: Int
+    let result: SearchResult
+    let onBookmark: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Turn indicator
+            HStack {
+                Text(index == 0 ? "Original Question" : "Follow-up \(index)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(12)
+                Spacer()
+            }
+            .padding(.horizontal)
+
+            // Search result card
+            SearchResultCard(result: result, onBookmark: onBookmark)
+                .padding(.horizontal)
+
+            Spacer()
+        }
+        .padding(.top)
     }
 }
 
