@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Foundation
 
 @MainActor
 class SearchViewModel: ObservableObject {
@@ -15,7 +16,6 @@ class SearchViewModel: ObservableObject {
     private let weatherService: WeatherService
     private var cancellables = Set<AnyCancellable>()
     private var searchTask: Task<Void, Never>?
-    private let bookmarkService = BookmarkService()
     
     let exampleQueries = [
         "What are fire detection requirements for OSVs?",
@@ -257,7 +257,12 @@ class SearchViewModel: ObservableObject {
     // MARK: - Bookmark Support
     
     func bookmarkResult(_ result: SearchResult) {
-        bookmarkService.save(result, forKey: "BookmarkedSearches")
+        // Save to UserDefaults temporarily until BookmarkService is properly added to target
+        var existingBookmarks = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] ?? []
+        if let data = try? JSONEncoder().encode(result) {
+            existingBookmarks.append(data)
+            UserDefaults.standard.set(existingBookmarks, forKey: "BookmarkedSearches")
+        }
         NotificationCenter.default.post(name: NSNotification.Name("SearchBookmarked"), object: result)
     }
     

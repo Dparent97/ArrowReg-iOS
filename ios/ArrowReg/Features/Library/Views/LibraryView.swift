@@ -6,7 +6,7 @@ struct LibraryView: View {
     @State private var selectedTab = 0
     @State private var bookmarkedSearches: [SearchResult] = []
     @State private var bookmarkedArticles: [BookmarkedArticle] = []
-    private let bookmarkService = BookmarkService()
+    // BookmarkService temporarily removed until properly added to target
     
     var body: some View {
         NavigationStack {
@@ -59,10 +59,16 @@ struct LibraryView: View {
                 await loadAllContent()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SearchBookmarked"))) { _ in
-                bookmarkedSearches = bookmarkService.load(forKey: "BookmarkedSearches")
+                // Load from UserDefaults temporarily
+                if let dataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] {
+                    bookmarkedSearches = dataArray.compactMap { try? JSONDecoder().decode(SearchResult.self, from: $0) }
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ArticleBookmarked"))) { _ in
-                bookmarkedArticles = bookmarkService.load(forKey: "BookmarkedArticles")
+                // Load from UserDefaults temporarily
+                if let dataArray = UserDefaults.standard.array(forKey: "BookmarkedArticles") as? [Data] {
+                    bookmarkedArticles = dataArray.compactMap { try? JSONDecoder().decode(BookmarkedArticle.self, from: $0) }
+                }
             }
         }
     }
@@ -180,8 +186,13 @@ struct LibraryView: View {
     
     private func loadAllContent() async {
         await viewModel.loadSavedQueries()
-        bookmarkedSearches = bookmarkService.load(forKey: "BookmarkedSearches")
-        bookmarkedArticles = bookmarkService.load(forKey: "BookmarkedArticles")
+        // Load from UserDefaults temporarily
+        if let searchDataArray = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] {
+            bookmarkedSearches = searchDataArray.compactMap { try? JSONDecoder().decode(SearchResult.self, from: $0) }
+        }
+        if let articleDataArray = UserDefaults.standard.array(forKey: "BookmarkedArticles") as? [Data] {
+            bookmarkedArticles = articleDataArray.compactMap { try? JSONDecoder().decode(BookmarkedArticle.self, from: $0) }
+        }
     }
 }
 
