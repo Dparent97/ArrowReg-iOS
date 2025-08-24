@@ -630,7 +630,7 @@ class SearchService: ObservableObject {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("*/*", forHTTPHeaderField: "Accept")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
 
         if let authToken = getAuthToken() {
             urlRequest.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
@@ -651,8 +651,10 @@ class SearchService: ObservableObject {
     }
 
     private func getAuthToken() -> String? {
-        // TODO: Implement secure token storage/retrieval
-        return nil
+        if let token = ProcessInfo.processInfo.environment["AR_API_TOKEN"] {
+            return token
+        }
+        return UserDefaults.standard.string(forKey: "AR_API_TOKEN")
     }
     
     private func createMockSearchResult(for request: SearchRequest, isOffline: Bool = false, fallbackReason: String? = nil) -> SearchResult {

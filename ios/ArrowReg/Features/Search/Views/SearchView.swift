@@ -230,44 +230,36 @@ struct SearchView: View {
             }
             .padding(.bottom, 12)
             
-            // Conversation turns with TabView
-            TabView(selection: $selectedConversationTurn) {
-                ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, result in
-                    VStack(spacing: 16) {
-                        // Turn indicator
-                        HStack {
-                            Text(index == 0 ? "Original Question" : "Follow-up \(index)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(12)
-                            Spacer()
-                        }
-                        .padding(.horizontal)
-                        
-                        // Search result card
-                        SearchResultCard(result: result) {
-                            viewModel.bookmarkResult(result)
-                        }
-                        .padding(.horizontal)
-                        
+            // Conversation turns with UIPageViewController wrapper
+            PagingView(pages: viewModel.results.enumerated().map { index, result in
+                VStack(spacing: 16) {
+                    HStack {
+                        Text(index == 0 ? "Original Question" : "Follow-up \(index)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(12)
                         Spacer()
                     }
-                    .padding(.top)
-                    .tag(index)
+                    .padding(.horizontal)
+
+                    SearchResultCard(result: result) {
+                        viewModel.bookmarkResult(result)
+                    }
+                    .padding(.horizontal)
+
+                    Spacer()
                 }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .indexViewStyle(.page(backgroundDisplayMode: .never))
+                .padding(.top)
+            }, currentIndex: $selectedConversationTurn)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .allowsHitTesting(true)
             .onChange(of: selectedConversationTurn) { newValue in
                 print("🔄 Switched to conversation turn \(newValue + 1) of \(viewModel.results.count)")
             }
             .onAppear {
-                print("📱 TabView appeared with \(viewModel.results.count) results, current selection: \(selectedConversationTurn)")
+                print("📱 PagingView appeared with \(viewModel.results.count) results, current selection: \(selectedConversationTurn)")
             }
         }
     }

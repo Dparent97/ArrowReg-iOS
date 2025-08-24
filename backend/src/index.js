@@ -99,6 +99,10 @@ router.get('/health', async (request, env) => withCORS(request, env, json({ stat
 
 // Real OpenAI search endpoint
 router.post('/api/search', async (request, env) => {
+  const auth = await requireJwt(request, env);
+  if (!auth.ok) {
+    return withCORS(request, env, json({ error: auth.error || 'unauthorized' }, 401));
+  }
   const startTime = Date.now();
   let payload = {};
   try { payload = await request.json(); } catch {}

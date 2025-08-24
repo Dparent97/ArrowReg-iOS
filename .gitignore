@@ -223,7 +223,7 @@ Secrets.xcconfig
 .wrangler/
 
 # Local data files
-data-local/
+# guides and config are generated content; keep ignored
 guides/
 config/
 AGENTS.md

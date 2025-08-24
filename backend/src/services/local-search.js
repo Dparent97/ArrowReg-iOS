@@ -3,6 +3,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { processText } from '../utils/nlp.js';
 
+// Simple vocabulary used for deterministic embeddings. In production,
+// vectors are generated using bge-base or text-embedding-3-small and
+// stored in data-local/embeddings.
+const EMBEDDING_VOCAB = [
+    'survey',
+    'inspection',
+    'vessel',
+    'navigation',
+    'mariners',
+    'bridge',
+    'lighting',
+    'stability',
+    'passenger'
+];
+
 class LocalSearchService {
     constructor() {
         this.searchIndex = new Map(); // word -> Map(sectionId -> { tf, documentId, title, sectionNumber })
@@ -10,6 +25,7 @@ class LocalSearchService {
         this.sectionWordCounts = new Map();
         this.totalSections = 0;
         this.initialized = false;
+        this.embeddingIndex = new Map(); // sectionId -> { vector, documentId }
     }
 
     async initialize() {
@@ -21,6 +37,11 @@ class LocalSearchService {
             await this.loadDocument(path.join(documentsPath, 'ABS-Part-7-Structured.md'), 'abs_part7');
             await this.loadDocument(path.join(documentsPath, 'ECFR-title33.md'), 'cfr33');
             await this.loadDocument(path.join(documentsPath, 'ECFR-title46.md'), 'cfr46');
+
+            // Load precomputed embedding vectors
+            await this.loadEmbeddings(path.join(documentsPath, 'embeddings', 'abs_part7.json'));
+            await this.loadEmbeddings(path.join(documentsPath, 'embeddings', 'cfr33.json'));
+            await this.loadEmbeddings(path.join(documentsPath, 'embeddings', 'cfr46.json'));
             
             console.log(`Loaded ${this.documents.size} documents for local search`);
             this.initialized = true;
@@ -44,9 +65,23 @@ class LocalSearchService {
 
             // Build search index for this document
             this.indexDocument(documentId, sections);
-            
         } catch (error) {
             console.error(`Failed to load document ${documentId}:`, error);
+        }
+    }
+
+    async loadEmbeddings(filePath) {
+        try {
+            const data = await fs.promises.readFile(filePath, 'utf8');
+            const embeddings = JSON.parse(data);
+            for (const [sectionId, vector] of Object.entries(embeddings)) {
+                // Determine documentId from sectionId prefix
+                const parts = sectionId.split('_');
+                const documentId = parts.slice(0, 2).join('_');
+                this.embeddingIndex.set(sectionId, { vector, documentId });
+            }
+        } catch (error) {
+            console.error('Failed to load embeddings:', error);
         }
     }
 
@@ -177,6 +212,27 @@ class LocalSearchService {
         return terms;
     }
 
+    computeQueryEmbedding(query) {
+        const tokens = processText(query);
+        const vector = Array(EMBEDDING_VOCAB.length).fill(0);
+        for (const token of tokens) {
+            const idx = EMBEDDING_VOCAB.indexOf(token);
+            if (idx >= 0) vector[idx] += 1;
+        }
+        return vector;
+    }
+
+    cosineSimilarity(a, b) {
+        let dot = 0, normA = 0, normB = 0;
+        for (let i = 0; i < a.length && i < b.length; i++) {
+            dot += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        if (normA === 0 || normB === 0) return 0;
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
     async search(query, options = {}) {
         if (!this.initialized) {
             await this.initialize();
@@ -203,6 +259,30 @@ class LocalSearchService {
             }
         }
 
+        // Hybrid ranking: incorporate cosine similarity from embeddings
+        const queryVec = this.computeQueryEmbedding(query);
+        for (const [sectionId, { vector, documentId }] of this.embeddingIndex.entries()) {
+            if (sources.length > 0 && !sources.includes(documentId)) continue;
+            const cos = this.cosineSimilarity(queryVec, vector);
+            if (cos <= 0) continue;
+
+            if (!results.has(sectionId)) {
+                // fetch section metadata
+                const doc = this.documents.get(documentId);
+                const section = doc?.sections.find(s => s.id === sectionId);
+                if (!section) continue;
+                results.set(sectionId, {
+                    documentId,
+                    sectionId,
+                    title: section.title,
+                    sectionNumber: section.sectionNumber,
+                    score: cos
+                });
+            } else {
+                results.get(sectionId).score += cos;
+            }
+        }
+
         const sortedResults = Array.from(results.values())
             .sort((a, b) => b.score - a.score)
             .slice(0, maxResults);
@@ -211,6 +291,11 @@ class LocalSearchService {
             ...result,
             content: this.getFullSectionContent(result.documentId, result.sectionId),
             source: this.getSourceInfo(result.documentId),
+            citation: {
+                title: this.getDocumentTitle(result.documentId),
+                section: result.sectionNumber,
+                url: this.getCitationUrl(result.documentId, result.sectionNumber)
+            },
             confidence: Math.round(Math.min(result.score * 100, 95))
         }));
     }
@@ -229,8 +314,17 @@ class LocalSearchService {
             'cfr33': { name: 'CFR33', type: 'federal_regulation', displayName: '33 CFR' },
             'cfr46': { name: 'CFR46', type: 'federal_regulation', displayName: '46 CFR' }
         };
-        
+
         return sourceMap[documentId] || { name: documentId, type: 'unknown', displayName: documentId };
+    }
+
+    getCitationUrl(documentId, sectionNumber) {
+        if (!sectionNumber) return null;
+        if (documentId.startsWith('cfr')) {
+            const title = documentId.replace('cfr', '');
+            return `https://www.ecfr.gov/current/title-${title}/section-${sectionNumber}`;
+        }
+        return null;
     }
 
     async addDocument(filePath, documentId) {
