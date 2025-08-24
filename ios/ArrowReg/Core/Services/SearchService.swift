@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Security
 
 // MARK: - Backend Response Models
 struct BackendSearchResponse: Codable {
@@ -412,7 +413,16 @@ class SearchService: ObservableObject {
             throw SearchError.networkError
         }
         
-        guard httpResponse.statusCode == 200 else {
+        switch httpResponse.statusCode {
+        case 200:
+            break
+        case 401:
+            throw SearchError.unauthorized
+        case 429:
+            throw SearchError.rateLimited
+        case 408:
+            throw SearchError.timeout
+        default:
             throw SearchError.serverError("HTTP \(httpResponse.statusCode)")
         }
         
@@ -484,6 +494,10 @@ class SearchService: ObservableObject {
                                 
                             case "error":
                                 if let errorMessage = streamResponse.data.value as? String {
+                                    if errorMessage.lowercased().contains("unauthorized") {
+                                        continuation.finish(throwing: SearchError.unauthorized)
+                                        return
+                                    }
                                     continuation.yield(.error(errorMessage))
                                 }
                                 continuation.finish()
@@ -601,10 +615,9 @@ class SearchService: ObservableObject {
     }
     
     // MARK: - Private Methods
-    
+
     private func getAuthToken() -> String? {
-        // TODO: Implement secure token storage/retrieval
-        return nil
+        KeychainHelper.shared.read(service: KeychainHelper.service, account: KeychainHelper.account)
     }
     
     private func createMockSearchResult(for request: SearchRequest, isOffline: Bool = false, fallbackReason: String? = nil) -> SearchResult {
@@ -656,5 +669,51 @@ class SearchService: ObservableObject {
             isComplete: true,
             isOffline: isOffline
         )
+    }
+}
+
+// MARK: - Keychain Helper
+
+final class KeychainHelper {
+    static let shared = KeychainHelper()
+    static let service = "ArrowRegAuth"
+    static let account = "authToken"
+
+    private init() {}
+
+    func save(_ token: String, service: String = KeychainHelper.service, account: String = KeychainHelper.account) {
+        let data = Data(token.utf8)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(query as CFDictionary)
+        var attributes = query
+        attributes[kSecValueData as String] = data
+        SecItemAdd(attributes as CFDictionary, nil)
+    }
+
+    func read(service: String, account: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess, let data = item as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    func delete(service: String = KeychainHelper.service, account: String = KeychainHelper.account) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 }

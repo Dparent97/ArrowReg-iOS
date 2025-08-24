@@ -1,4 +1,5 @@
 import { Router } from 'itty-router';
+import { jwtVerify } from 'jose';
 // import { handleStreamingSearch } from './handlers/openai-search.js';
 // import { handleDocumentUpload, handleDocumentList, handleDocumentDelete } from './handlers/document-management.js';
 
@@ -42,14 +43,19 @@ function parseSimpleRSS(rssText) {
 }
 
 // ---- Config: CORS + Auth helpers ----
-const PROD_ORIGIN = 'https://arrowreg.app'; // adjust when you have the real domain/app
+const PROD_ORIGINS = ['https://arrowreg.app'];
 const DEV_ORIGIN = '*';
 
 function allowedOrigin(env, request) {
   const url = new URL(request.url);
-  const origin = request.headers.get('Origin') || '';
+  const origin = request.headers.get('Origin');
   const isDev = (env.ENVIRONMENT || env.NODE_ENV) === 'development' || url.hostname === 'localhost';
-  return isDev ? DEV_ORIGIN : PROD_ORIGIN;
+  if (isDev) return DEV_ORIGIN;
+  const allowed = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : PROD_ORIGINS;
+  if (origin && allowed.includes(origin)) {
+    return origin;
+  }
+  return 'null';
 }
 
 async function withCORS(request, env, response) {
@@ -76,11 +82,10 @@ async function requireJwt(request, env) {
   if (!auth.startsWith('Bearer ')) return { ok: false, error: 'missing_token' };
   const token = auth.slice(7);
   if (!env.JWT_SECRET) return { ok: false, error: 'server_missing_jwt_secret' };
-  // Minimal placeholder check (replace with real verification if needed)
   try {
-    // For now, accept any non-empty token. Hook up real JWT verification later.
-    if (!token) return { ok: false, error: 'invalid_token' };
-    return { ok: true, claims: { sub: 'placeholder' } };
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    return { ok: true, claims: payload };
   } catch (e) {
     return { ok: false, error: 'invalid_token' };
   }
