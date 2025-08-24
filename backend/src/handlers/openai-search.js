@@ -78,17 +78,21 @@ export class OpenAISearchHandler {
   /**
    * Wait for completion and return structured response
    */
-  async waitForCompletion(run, threadId) {
+  async waitForCompletion(run, threadId, timeoutMs = 30000) {
     let currentMessage = '';
     let citations = [];
     let functionCalls = [];
 
-    let maxAttempts = 30; // 30 seconds max
+    const startTime = Date.now();
+    let delayMs = 500;
     let attempts = 0;
-    
+
     try {
       // Poll for completion
-      while (attempts < maxAttempts) {
+      while (Date.now() - startTime < timeoutMs) {
+        attempts++;
+        console.log(`Polling attempt ${attempts}`);
+
         const currentRun = await this.openai.beta.threads.runs.retrieve(
           threadId,
           run.id
@@ -141,9 +145,9 @@ export class OpenAISearchHandler {
           throw new Error(`OpenAI run failed: ${currentRun.last_error?.message || 'Unknown error'}`);
         }
 
-        // Wait before next poll
-        await this.delay(1000);
-        attempts++;
+        // Wait before next poll with exponential backoff
+        await this.delay(delayMs);
+        delayMs = Math.min(delayMs * 2, 5000);
       }
 
       throw new Error('OpenAI request timed out');
