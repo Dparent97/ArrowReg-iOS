@@ -1,36 +1,6 @@
 import SwiftUI
 
-struct ClearOnSwipeGesture: ViewModifier {
-    let action: () -> Void
-    @State private var hasTriggeredHaptic = false
-
-    func body(content: Content) -> some View {
-        content.gesture(
-            DragGesture()
-                .onChanged { value in
-                    if value.translation.width < -50 && !hasTriggeredHaptic {
-                        hasTriggeredHaptic = true
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                        impactFeedback.impactOccurred()
-                    }
-                }
-                .onEnded { value in
-                    hasTriggeredHaptic = false
-                    if value.translation.width < -100 {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            action()
-                        }
-                    }
-                }
-        )
-    }
-}
-
-extension View {
-    func clearOnSwipeGesture(action: @escaping () -> Void) -> some View {
-        modifier(ClearOnSwipeGesture(action: action))
-    }
-}
+// Long press gesture is now used for clearing instead of swipe to avoid conflicts with TabView navigation
 
 struct SearchView: View {
     @StateObject private var viewModel = SearchViewModel()
@@ -42,8 +12,9 @@ struct SearchView: View {
     @State private var showingHistory = false
     @State private var followUpQuery = ""
     @State private var showingFollowUpInput = false
-    @State private var showScrollToTop = false
-    @State private var shouldScrollToTop = false
+
+    @State private var scrollAction: (() -> Void)?
+    @State private var selectedConversationTurn = 0
     
     // Settings
     @AppStorage("search.history.enabled") private var historyEnabled = true
@@ -151,22 +122,32 @@ struct SearchView: View {
                         Color.clear
                             .frame(height: 1)
                             .id("top")
+                            .onAppear {
+                                // Store the scroll action when the view appears
+                                scrollAction = {
+                                    withAnimation(.easeInOut(duration: 0.6)) {
+                                        proxy.scrollTo("top", anchor: .top)
+                                    }
+                                }
+                            }
                         
                         if viewModel.isSearching {
                             searchingView
                                 .id("searching")
                         } else {
-                            ForEach(viewModel.results, id: \.id) { result in
-                                SearchResultCard(result: result) {
-                                    viewModel.bookmarkResult(result)
-                                }
-                                .id(result.id)
-                                .clearOnSwipeGesture {
-                                    clearPage()
-                                }
-                                .onAppear {
-                                    // Show scroll to top button when there are multiple results
-                                    showScrollToTop = viewModel.results.count > 1
+                            // Multi-turn conversation navigation
+                            if viewModel.results.count > 1 {
+                                conversationPagesView
+                            } else {
+                                // Single result - use traditional card view
+                                ForEach(viewModel.results, id: \.id) { result in
+                                    SearchResultCard(result: result) {
+                                        viewModel.bookmarkResult(result)
+                                    }
+                                    .id(result.id)
+                                    .onLongPressGesture {
+                                        clearPage()
+                                    }
                                 }
                             }
                         }
@@ -217,40 +198,76 @@ struct SearchView: View {
                         .frame(height: 100)
                         .id("bottom-spacer")
                 }
-                .onChange(of: shouldScrollToTop) { _ in
-                    if shouldScrollToTop {
-                        withAnimation(.easeInOut(duration: 0.6)) {
-                            proxy.scrollTo("top", anchor: .top)
-                        }
-                        shouldScrollToTop = false
+
+            }
+            .onLongPressGesture {
+                clearPage()
+            }
+        }
+    }
+    
+    // MARK: - Conversation Pages View
+    
+    private var conversationPagesView: some View {
+        VStack(spacing: 0) {
+            // Page indicator with swipe hint
+            VStack(spacing: 4) {
+                HStack(spacing: 8) {
+                    ForEach(0..<viewModel.results.count, id: \.self) { index in
+                        Circle()
+                            .fill(index == selectedConversationTurn ? Color.blue : Color.gray.opacity(0.3))
+                            .frame(width: 10, height: 10)
+                            .scaleEffect(index == selectedConversationTurn ? 1.3 : 1.0)
+                            .animation(.easeInOut(duration: 0.2), value: selectedConversationTurn)
                     }
                 }
-                .overlay(
-                    // Scroll to top button - controlled by the main ScrollViewReader
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            if showScrollToTop && viewModel.results.count > 1 {
-                                Button(action: {
-                                    // This will be handled by storing a reference to the proxy
-                                    scrollToTop()
-                                }) {
-                                    Image(systemName: "arrow.up.circle.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.white)
-                                        .background(Circle().fill(.blue))
-                                        .shadow(radius: 4)
-                                }
-                                .padding(.trailing, 20)
-                                .padding(.bottom, 100)
-                            }
-                        }
-                    }
-                )
+                
+                // Swipe instruction
+                Text("Swipe left or right to navigate")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .opacity(0.7)
             }
-            .clearOnSwipeGesture {
-                clearPage()
+            .padding(.bottom, 12)
+            
+            // Conversation turns with TabView
+            TabView(selection: $selectedConversationTurn) {
+                ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, result in
+                    VStack(spacing: 16) {
+                        // Turn indicator
+                        HStack {
+                            Text(index == 0 ? "Original Question" : "Follow-up \(index)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(12)
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        
+                        // Search result card
+                        SearchResultCard(result: result) {
+                            viewModel.bookmarkResult(result)
+                        }
+                        .padding(.horizontal)
+                        
+                        Spacer()
+                    }
+                    .padding(.top)
+                    .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .indexViewStyle(.page(backgroundDisplayMode: .never))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .allowsHitTesting(true)
+            .onChange(of: selectedConversationTurn) { newValue in
+                print("🔄 Switched to conversation turn \(newValue + 1) of \(viewModel.results.count)")
+            }
+            .onAppear {
+                print("📱 TabView appeared with \(viewModel.results.count) results, current selection: \(selectedConversationTurn)")
             }
         }
     }
@@ -369,15 +386,18 @@ struct SearchView: View {
         }
     }
     
-    private func scrollToTop() {
-        shouldScrollToTop = true
-    }
+
     
     private func monitorForNewResult(initialCount: Int) {
         // Check if a new result has been added
         if viewModel.results.count > initialCount {
-            // New result added - don't auto-scroll, let user manually scroll if needed
-            // This prevents jumping the view when user might be reading the previous result
+            // New result added - navigate to the latest conversation turn
+            let newTurnIndex = viewModel.results.count - 1
+            print("📝 New result added, navigating to turn \(newTurnIndex + 1)")
+            
+            withAnimation(.easeInOut(duration: 0.5)) {
+                selectedConversationTurn = newTurnIndex
+            }
         } else if viewModel.isSearching {
             // Still searching - check again in a bit
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -740,6 +760,7 @@ struct SearchResultCard: View {
                     .frame(maxHeight: 500) // Larger viewing area for better readability
                     .background(Color(.systemGray6))
                     .cornerRadius(8)
+                    .clipped() // Prevent gesture conflicts
                 } else {
                     // Regular text (collapsed or short)
                     Text(result.answer)

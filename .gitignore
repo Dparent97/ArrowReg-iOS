@@ -226,4 +226,5 @@ Secrets.xcconfig
 data-local/
 guides/
 config/
+AGENTS.md
 *.pdf
