@@ -1,5 +1,5 @@
 import { marked } from 'marked';
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 class LocalSearchService {
@@ -29,7 +29,7 @@ class LocalSearchService {
 
     async loadDocument(filePath, documentId) {
         try {
-            const content = fs.readFileSync(filePath, 'utf8');
+            const content = await fs.readFile(filePath, 'utf8');
             const sections = this.parseMarkdownSections(content, documentId);
             
             this.documents.set(documentId, {

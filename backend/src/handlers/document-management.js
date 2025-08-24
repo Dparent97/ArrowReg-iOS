@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import LocalSearchService from '../services/local-search.js';
 
@@ -12,6 +12,15 @@ export class DocumentManager {
         this.documentsPath = path.join(process.cwd(), '..', 'data-local');
         this.supportedTypes = ['md', 'txt', 'pdf'];
         this.maxFileSize = 50 * 1024 * 1024; // 50MB
+    }
+
+    async fileExists(filePath) {
+        try {
+            await fs.access(filePath);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     /**
@@ -47,12 +56,12 @@ export class DocumentManager {
             const filePath = path.join(this.documentsPath, processedFileName);
             
             if (extension === '.pdf') {
-                fs.writeFileSync(filePath, fileBuffer);
+                await fs.writeFile(filePath, fileBuffer);
                 // Also save extracted content as markdown
                 const mdPath = path.join(this.documentsPath, `${documentId}.md`);
-                fs.writeFileSync(mdPath, content, 'utf8');
+                await fs.writeFile(mdPath, content, 'utf8');
             } else {
-                fs.writeFileSync(filePath, content, 'utf8');
+                await fs.writeFile(filePath, content, 'utf8');
             }
 
             // Add to search index
@@ -73,7 +82,7 @@ export class DocumentManager {
                 ...metadata
             };
             
-            fs.writeFileSync(metadataPath, JSON.stringify(fullMetadata, null, 2));
+            await fs.writeFile(metadataPath, JSON.stringify(fullMetadata, null, 2));
 
             return {
                 success: true,
@@ -102,9 +111,13 @@ export class DocumentManager {
 
             let removed = false;
             for (const file of files) {
-                if (fs.existsSync(file)) {
-                    fs.unlinkSync(file);
-                    removed = true;
+                if (await this.fileExists(file)) {
+                    try {
+                        await fs.unlink(file);
+                        removed = true;
+                    } catch (err) {
+                        console.warn(`Failed to remove ${file}:`, err);
+                    }
                 }
             }
 
@@ -131,14 +144,14 @@ export class DocumentManager {
      */
     async listDocuments() {
         try {
-            const files = fs.readdirSync(this.documentsPath);
+            const files = await fs.readdir(this.documentsPath);
             const metaFiles = files.filter(f => f.endsWith('.meta.json'));
             
             const documents = [];
             for (const metaFile of metaFiles) {
                 try {
                     const metaPath = path.join(this.documentsPath, metaFile);
-                    const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                    const metadata = JSON.parse(await fs.readFile(metaPath, 'utf8'));
                     documents.push(metadata);
                 } catch (error) {
                     console.warn(`Failed to read metadata for ${metaFile}:`, error);
@@ -166,11 +179,11 @@ export class DocumentManager {
     async getDocument(documentId) {
         try {
             const metaPath = path.join(this.documentsPath, `${documentId}.meta.json`);
-            if (!fs.existsSync(metaPath)) {
+            if (!await this.fileExists(metaPath)) {
                 throw new Error(`Document ${documentId} not found`);
             }
 
-            const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const metadata = JSON.parse(await fs.readFile(metaPath, 'utf8'));
             
             // Try to read content file
             const possibleFiles = [
@@ -180,8 +193,8 @@ export class DocumentManager {
 
             let content = '';
             for (const file of possibleFiles) {
-                if (fs.existsSync(file)) {
-                    content = fs.readFileSync(file, 'utf8');
+                if (await this.fileExists(file)) {
+                    content = await fs.readFile(file, 'utf8');
                     break;
                 }
             }
@@ -255,11 +268,11 @@ export class DocumentManager {
      */
     async bulkImport(importPath, documentType) {
         try {
-            if (!fs.existsSync(importPath)) {
+            if (!await this.fileExists(importPath)) {
                 throw new Error(`Import path does not exist: ${importPath}`);
             }
 
-            const files = fs.readdirSync(importPath)
+            const files = (await fs.readdir(importPath))
                 .filter(f => {
                     const ext = path.parse(f).ext.toLowerCase().substring(1);
                     return this.supportedTypes.includes(ext);
@@ -272,7 +285,7 @@ export class DocumentManager {
             for (const fileName of files) {
                 try {
                     const filePath = path.join(importPath, fileName);
-                    const fileBuffer = fs.readFileSync(filePath);
+                    const fileBuffer = await fs.readFile(filePath);
                     
                     const result = await this.addDocument(fileBuffer, fileName, documentType);
                     results.push(result);
