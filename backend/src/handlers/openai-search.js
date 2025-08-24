@@ -67,7 +67,8 @@ export class OpenAISearchHandler {
         }
       );
 
-      return await this.waitForCompletion(run, thread.id);
+      const timeout = parseInt(this.env.OPENAI_POLL_TIMEOUT_MS, 10) || 30000;
+      return await this.waitForCompletion(run, thread.id, timeout);
 
     } catch (error) {
       console.error('OpenAI search error:', error);
@@ -78,17 +79,20 @@ export class OpenAISearchHandler {
   /**
    * Wait for completion and return structured response
    */
-  async waitForCompletion(run, threadId) {
+  async waitForCompletion(run, threadId, timeoutMs = 30000) {
     let currentMessage = '';
     let citations = [];
     let functionCalls = [];
 
-    let maxAttempts = 30; // 30 seconds max
+    const startTime = Date.now();
     let attempts = 0;
+    let delayMs = 500;
     
     try {
       // Poll for completion
-      while (attempts < maxAttempts) {
+      while (Date.now() - startTime < timeoutMs) {
+        attempts++;
+        console.log(`Polling attempt ${attempts}`);
         const currentRun = await this.openai.beta.threads.runs.retrieve(
           threadId,
           run.id
@@ -130,6 +134,7 @@ export class OpenAISearchHandler {
           const uniqueCitations = this.deduplicateCitations(citations);
           const confidence = this.calculateConfidence(currentMessage, uniqueCitations);
           
+          console.log(`Polling completed after ${attempts} attempts`);
           return {
             message: currentMessage,
             citations: uniqueCitations,
@@ -142,14 +147,14 @@ export class OpenAISearchHandler {
         }
 
         // Wait before next poll
-        await this.delay(1000);
-        attempts++;
+        await this.delay(delayMs);
+        delayMs = Math.min(delayMs * 2, 5000);
       }
 
       throw new Error('OpenAI request timed out');
 
     } catch (error) {
-      console.error('Polling error:', error);
+      console.error(`Polling error after ${attempts} attempts:`, error);
       throw error;
     }
   }
