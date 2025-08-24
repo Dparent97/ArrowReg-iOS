@@ -12,6 +12,10 @@ struct BackendSearchResponse: Codable {
     let assistantId: String?
     let vectorStores: [String]?
     let threadId: String?
+    let fromCache: Bool?
+    let cacheAge: Int?
+    let fallback: Bool?
+    let error: String?
 }
 
 struct BackendCitation: Codable {
@@ -288,8 +292,13 @@ class SearchService: ObservableObject {
                         isOffline: false
                     )
                 } catch {
+                    // Log the parsing error for debugging
+                    print("❌ JSON parsing failed: \(error)")
+                    if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                        print("📄 Response data: \(responseString)")
+                    }
                     // Fallback to mock response
-                    return createMockSearchResult(for: request, isOffline: false)
+                    return createMockSearchResult(for: request, isOffline: false, fallbackReason: "JSON parsing failed")
                 }
                 
             case 401:
@@ -357,7 +366,12 @@ class SearchService: ObservableObject {
                         isOffline: false
                     )
                 } catch {
-                    throw SearchError.serverError("Failed to parse follow-up response")
+                    // Log the parsing error for debugging
+                    print("❌ Follow-up JSON parsing failed: \(error)")
+                    if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                        print("📄 Follow-up response data: \(responseString)")
+                    }
+                    throw SearchError.serverError("Failed to parse follow-up response: \(error.localizedDescription)")
                 }
                 
             case 401:
@@ -650,7 +664,7 @@ class SearchService: ObservableObject {
         ]
         
         let query = request.query.lowercased()
-        var answer = "I found information related to your query about maritime regulations."
+        var answer = "I'm currently unable to provide a detailed answer to your maritime regulations question. Please check your internet connection and try again."
         
         // Simple keyword matching for demo
         for (keyword, response) in mockAnswers {
@@ -658,6 +672,11 @@ class SearchService: ObservableObject {
                 answer = response
                 break
             }
+        }
+        
+        // If no keyword match, provide a more helpful generic response
+        if answer == "I'm currently unable to provide a detailed answer to your maritime regulations question. Please check your internet connection and try again." {
+            answer = "Your question about '\(request.query)' requires access to the regulatory database. Please ensure you're connected to the internet and try again. If the issue persists, you may be in offline mode."
         }
         
         // Add fallback reason if provided
