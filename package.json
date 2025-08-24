@@ -1,0 +1,7 @@
+{
+  "name": "arrowreg-project",
+  "private": true,
+  "scripts": {
+    "test": "node backend/tests/eval.test.js"
+  }
+}
