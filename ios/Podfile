@@ -1,0 +1,14 @@
+platform :ios, '17.0'
+use_frameworks!
+
+target 'ArrowReg' do
+  # Networking
+  pod 'Alamofire', '~> 5.8'
+  
+  # UI Components  
+  pod 'MarkdownUI', '~> 2.0'
+end
+
+target 'ArrowRegTests' do
+  inherit! :search_paths
+end

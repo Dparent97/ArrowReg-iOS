@@ -1,0 +1,597 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3D0001000000001 /* ArrowRegApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000001 /* ArrowRegApp.swift */; };
+		3D0001000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000002 /* ContentView.swift */; };
+		3D0001000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D0002000000003 /* Assets.xcassets */; };
+		3D0001000000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D0002000000004 /* Preview Assets.xcassets */; };
+		3D0001000000005 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000005 /* AppState.swift */; };
+		3D0001000000006 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000006 /* SearchView.swift */; };
+		3D0001000000007 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000007 /* DiscoverView.swift */; };
+		3D0001000000008 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000008 /* LibraryView.swift */; };
+		3D0001000000009 /* WeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000009 /* WeatherView.swift */; };
+		3D0001000000010 /* SearchModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000010 /* SearchModels.swift */; };
+		3D0001000000011 /* WeatherModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000011 /* WeatherModels.swift */; };
+		3D0001000000012 /* UserModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000012 /* UserModels.swift */; };
+		3D0001000000013 /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000013 /* SearchService.swift */; };
+		3D0001000000014 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000014 /* WeatherService.swift */; };
+		3D0001000000015 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000015 /* NetworkMonitor.swift */; };
+		3D0001000000016 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000016 /* Logger.swift */; };
+		3D0001000000017 /* SearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000017 /* SearchViewModel.swift */; };
+		3D0001000000018 /* WeatherViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000018 /* WeatherViewModel.swift */; };
+		3D0001000000019 /* DiscoverViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000019 /* DiscoverViewModel.swift */; };
+		3D0001000000020 /* LibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0002000000020 /* LibraryViewModel.swift */; };
+		3D0001000000021 /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 3D0002000000021 /* Config.xcconfig */; };
+		3D0001000000022 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 3D0002000000022 /* Secrets.xcconfig */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		3D0003000000001 /* ArrowReg.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArrowReg.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3D0002000000001 /* ArrowRegApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrowRegApp.swift; sourceTree = "<group>"; };
+		3D0002000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3D0002000000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3D0002000000004 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		3D0002000000005 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		3D0002000000006 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		3D0002000000007 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
+		3D0002000000008 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		3D0002000000009 /* WeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherView.swift; sourceTree = "<group>"; };
+		3D0002000000010 /* SearchModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchModels.swift; sourceTree = "<group>"; };
+		3D0002000000011 /* WeatherModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherModels.swift; sourceTree = "<group>"; };
+		3D0002000000012 /* UserModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserModels.swift; sourceTree = "<group>"; };
+		3D0002000000013 /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
+		3D0002000000014 /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
+		3D0002000000015 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		3D0002000000016 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		3D0002000000017 /* SearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewModel.swift; sourceTree = "<group>"; };
+		3D0002000000018 /* WeatherViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherViewModel.swift; sourceTree = "<group>"; };
+		3D0002000000019 /* DiscoverViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverViewModel.swift; sourceTree = "<group>"; };
+		3D0002000000020 /* LibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViewModel.swift; sourceTree = "<group>"; };
+		3D0002000000021 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		3D0002000000022 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
+		3D0002000000023 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3D0004000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3D0005000000001 = {
+			isa = PBXGroup;
+			children = (
+				3D0005000000002 /* ArrowReg */,
+				3D0005000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3D0005000000002 /* ArrowReg */ = {
+			isa = PBXGroup;
+			children = (
+				3D0005000000004 /* App */,
+				3D0005000000005 /* Core */,
+				3D0005000000006 /* Features */,
+				3D0005000000007 /* Configuration */,
+				3D0005000000008 /* Resources */,
+				3D0005000000009 /* Preview Content */,
+			);
+			path = ArrowReg;
+			sourceTree = "<group>";
+		};
+		3D0005000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3D0003000000001 /* ArrowReg.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3D0005000000004 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000001 /* ArrowRegApp.swift */,
+				3D0002000000002 /* ContentView.swift */,
+				3D0002000000005 /* AppState.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		3D0005000000005 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				3D0005000000010 /* Models */,
+				3D0005000000011 /* Services */,
+				3D0005000000012 /* Utilities */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		3D0005000000006 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				3D0005000000013 /* Search */,
+				3D0005000000014 /* Discover */,
+				3D0005000000015 /* Library */,
+				3D0005000000016 /* Weather */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		3D0005000000007 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000021 /* Config.xcconfig */,
+				3D0002000000022 /* Secrets.xcconfig */,
+				3D0002000000023 /* Info.plist */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
+		3D0005000000008 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000003 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		3D0005000000009 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000004 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		3D0005000000010 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000010 /* SearchModels.swift */,
+				3D0002000000011 /* WeatherModels.swift */,
+				3D0002000000012 /* UserModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		3D0005000000011 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000013 /* SearchService.swift */,
+				3D0002000000014 /* WeatherService.swift */,
+				3D0002000000015 /* NetworkMonitor.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		3D0005000000012 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000016 /* Logger.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		3D0005000000013 /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				3D0005000000017 /* Views */,
+				3D0005000000018 /* ViewModels */,
+			);
+			path = Search;
+			sourceTree = "<group>";
+		};
+		3D0005000000014 /* Discover */ = {
+			isa = PBXGroup;
+			children = (
+				3D0005000000019 /* Views */,
+				3D0005000000020 /* ViewModels */,
+			);
+			path = Discover;
+			sourceTree = "<group>";
+		};
+		3D0005000000015 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				3D0005000000021 /* Views */,
+				3D0005000000022 /* ViewModels */,
+			);
+			path = Library;
+			sourceTree = "<group>";
+		};
+		3D0005000000016 /* Weather */ = {
+			isa = PBXGroup;
+			children = (
+				3D0005000000023 /* Views */,
+				3D0005000000024 /* ViewModels */,
+			);
+			path = Weather;
+			sourceTree = "<group>";
+		};
+		3D0005000000017 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000006 /* SearchView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		3D0005000000018 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000017 /* SearchViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		3D0005000000019 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000007 /* DiscoverView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		3D0005000000020 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000019 /* DiscoverViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		3D0005000000021 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000008 /* LibraryView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		3D0005000000022 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000020 /* LibraryViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		3D0005000000023 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000009 /* WeatherView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		3D0005000000024 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				3D0002000000018 /* WeatherViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3D0006000000001 /* ArrowReg */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3D0007000000001 /* Build configuration list for PBXNativeTarget "ArrowReg" */;
+			buildPhases = (
+				3D0008000000001 /* Sources */,
+				3D0004000000001 /* Frameworks */,
+				3D0009000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ArrowReg;
+			productName = ArrowReg;
+			productReference = 3D0003000000001 /* ArrowReg.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		3D0010000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					3D0006000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 3D0011000000001 /* Build configuration list for PBXProject "ArrowReg" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 3D0005000000001;
+			productRefGroup = 3D0005000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3D0006000000001 /* ArrowReg */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3D0009000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3D0001000000004 /* Preview Assets.xcassets in Resources */,
+				3D0001000000003 /* Assets.xcassets in Resources */,
+				3D0001000000021 /* Config.xcconfig in Resources */,
+				3D0001000000022 /* Secrets.xcconfig in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3D0008000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3D0001000000002 /* ContentView.swift in Sources */,
+				3D0001000000005 /* AppState.swift in Sources */,
+				3D0001000000006 /* SearchView.swift in Sources */,
+				3D0001000000007 /* DiscoverView.swift in Sources */,
+				3D0001000000008 /* LibraryView.swift in Sources */,
+				3D0001000000009 /* WeatherView.swift in Sources */,
+				3D0001000000010 /* SearchModels.swift in Sources */,
+				3D0001000000011 /* WeatherModels.swift in Sources */,
+				3D0001000000012 /* UserModels.swift in Sources */,
+				3D0001000000013 /* SearchService.swift in Sources */,
+				3D0001000000014 /* WeatherService.swift in Sources */,
+				3D0001000000015 /* NetworkMonitor.swift in Sources */,
+				3D0001000000016 /* Logger.swift in Sources */,
+				3D0001000000017 /* SearchViewModel.swift in Sources */,
+				3D0001000000018 /* WeatherViewModel.swift in Sources */,
+				3D0001000000019 /* DiscoverViewModel.swift in Sources */,
+				3D0001000000020 /* LibraryViewModel.swift in Sources */,
+				3D0001000000001 /* ArrowRegApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3D0012000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3D0002000000021 /* Config.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		3D0012000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3D0002000000021 /* Config.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		3D0012000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3D0002000000022 /* Secrets.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"ArrowReg/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "ArrowReg/Configuration/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = ArrowReg;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.reference";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ArrowReg needs your location to provide accurate maritime weather conditions for your area";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arrowreg.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3D0012000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3D0002000000022 /* Secrets.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"ArrowReg/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "ArrowReg/Configuration/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = ArrowReg;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.reference";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ArrowReg needs your location to provide accurate maritime weather conditions for your area";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arrowreg.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3D0007000000001 /* Build configuration list for PBXNativeTarget "ArrowReg" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3D0012000000003 /* Debug */,
+				3D0012000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3D0011000000001 /* Build configuration list for PBXProject "ArrowReg" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3D0012000000001 /* Debug */,
+				3D0012000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 3D0010000000001 /* Project object */;
+}

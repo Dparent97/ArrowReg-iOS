@@ -1,0 +1,47 @@
+// ArrowReg Configuration - Base Settings
+// This file contains base configuration settings for the ArrowReg iOS app
+
+// App Configuration
+PRODUCT_BUNDLE_IDENTIFIER = com.arrowreg.ios
+PRODUCT_NAME = ArrowReg
+MARKETING_VERSION = 1.0
+CURRENT_PROJECT_VERSION = 1
+
+// Deployment Settings  
+IPHONEOS_DEPLOYMENT_TARGET = 17.0
+TARGETED_DEVICE_FAMILY = 1,2
+SUPPORTED_PLATFORMS = iphoneos iphonesimulator
+
+// Swift Settings
+SWIFT_VERSION = 5.0
+ENABLE_PREVIEWS = YES
+
+// Build Settings
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM = 
+
+// Asset Configuration
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
+
+// Info.plist Settings
+GENERATE_INFOPLIST_FILE = NO
+INFOPLIST_FILE = $(SRCROOT)/ArrowReg/Configuration/Info.plist
+
+// App Display Settings
+INFOPLIST_KEY_CFBundleDisplayName = ArrowReg
+INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.reference
+
+// UI Settings
+INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES
+INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES  
+INFOPLIST_KEY_UILaunchScreen_Generation = YES
+INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+
+// Development Settings
+DEVELOPMENT_ASSET_PATHS = "ArrowReg/Preview Content"
+
+// Runtime Settings
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks
+SWIFT_EMIT_LOC_STRINGS = YES

@@ -1,0 +1,28 @@
+name = "arrowreg-api"
+main = "src/index.js"
+compatibility_date = "2024-07-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+API_VERSION = "v1"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+LOG_LEVEL = "debug"
+
+[[kv_namespaces]]
+binding = "NEWS_CACHE"
+id = "90436bea87da42aa9668697ea19fa57d"
+
+[[kv_namespaces]]
+binding = "SEARCH_CACHE"
+id = "6e5f340646764cfc9757a33934bb6d80"
+
+[env.development]
+[[env.development.kv_namespaces]]
+binding = "NEWS_CACHE"
+id = "59ee5c8f647948b0af2d964944145a34"
+
+[[env.development.kv_namespaces]]
+binding = "SEARCH_CACHE"
+id = "6e5f340646764cfc9757a33934bb6d80"
