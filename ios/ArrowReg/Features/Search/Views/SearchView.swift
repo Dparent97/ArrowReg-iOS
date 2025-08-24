@@ -217,8 +217,8 @@ struct SearchView: View {
                         .frame(height: 100)
                         .id("bottom-spacer")
                 }
-                .onChange(of: shouldScrollToTop) { shouldScroll in
-                    if shouldScroll {
+                .onChange(of: shouldScrollToTop) { _ in
+                    if shouldScrollToTop {
                         withAnimation(.easeInOut(duration: 0.6)) {
                             proxy.scrollTo("top", anchor: .top)
                         }
