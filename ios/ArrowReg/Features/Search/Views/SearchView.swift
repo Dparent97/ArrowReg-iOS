@@ -43,6 +43,7 @@ struct SearchView: View {
     @State private var followUpQuery = ""
     @State private var showingFollowUpInput = false
     @State private var showScrollToTop = false
+    @State private var shouldScrollToTop = false
     
     // Settings
     @AppStorage("search.history.enabled") private var historyEnabled = true
@@ -216,17 +217,24 @@ struct SearchView: View {
                         .frame(height: 100)
                         .id("bottom-spacer")
                 }
+                .onChange(of: shouldScrollToTop) { shouldScroll in
+                    if shouldScroll {
+                        withAnimation(.easeInOut(duration: 0.6)) {
+                            proxy.scrollTo("top", anchor: .top)
+                        }
+                        shouldScrollToTop = false
+                    }
+                }
                 .overlay(
-                    // Scroll to top button
+                    // Scroll to top button - controlled by the main ScrollViewReader
                     VStack {
                         Spacer()
                         HStack {
                             Spacer()
                             if showScrollToTop && viewModel.results.count > 1 {
                                 Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.6)) {
-                                        // We'll handle scroll-to-top in the button itself
-                                    }
+                                    // This will be handled by storing a reference to the proxy
+                                    scrollToTop()
                                 }) {
                                     Image(systemName: "arrow.up.circle.fill")
                                         .font(.title2)
@@ -349,8 +357,33 @@ struct SearchView: View {
         let query = followUpQuery
         followUpQuery = ""
         
-        // Perform the search - the automatic scrolling will be handled by the view model
+        // Store the current result count to track when new result is added
+        let currentResultCount = viewModel.results.count
+        
+        // Perform the search
         viewModel.performFollowUpSearch(query)
+        
+        // Monitor for new results and scroll accordingly
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            monitorForNewResult(initialCount: currentResultCount)
+        }
+    }
+    
+    private func scrollToTop() {
+        shouldScrollToTop = true
+    }
+    
+    private func monitorForNewResult(initialCount: Int) {
+        // Check if a new result has been added
+        if viewModel.results.count > initialCount {
+            // New result added - don't auto-scroll, let user manually scroll if needed
+            // This prevents jumping the view when user might be reading the previous result
+        } else if viewModel.isSearching {
+            // Still searching - check again in a bit
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                monitorForNewResult(initialCount: initialCount)
+            }
+        }
     }
 }
 
