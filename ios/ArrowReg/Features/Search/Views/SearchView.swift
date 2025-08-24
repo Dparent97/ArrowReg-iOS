@@ -230,9 +230,9 @@ struct SearchView: View {
             }
             .padding(.bottom, 12)
             
-            // Conversation turns with TabView
-            TabView(selection: $selectedConversationTurn) {
-                ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, result in
+            // Conversation turns with UIKit-backed pager for reliable swiping
+            SwipePageView(
+                pages: viewModel.results.enumerated().map { index, result in
                     VStack(spacing: 16) {
                         // Turn indicator
                         HStack {
@@ -246,28 +246,25 @@ struct SearchView: View {
                             Spacer()
                         }
                         .padding(.horizontal)
-                        
+
                         // Search result card
                         SearchResultCard(result: result) {
                             viewModel.bookmarkResult(result)
                         }
                         .padding(.horizontal)
-                        
+
                         Spacer()
                     }
                     .padding(.top)
-                    .tag(index)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .indexViewStyle(.page(backgroundDisplayMode: .never))
+                },
+                currentIndex: $selectedConversationTurn
+            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .allowsHitTesting(true)
             .onChange(of: selectedConversationTurn) { newValue in
                 print("🔄 Switched to conversation turn \(newValue + 1) of \(viewModel.results.count)")
             }
             .onAppear {
-                print("📱 TabView appeared with \(viewModel.results.count) results, current selection: \(selectedConversationTurn)")
+                print("📱 Pager appeared with \(viewModel.results.count) results, current selection: \(selectedConversationTurn)")
             }
         }
     }
