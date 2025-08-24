@@ -294,7 +294,7 @@ class SearchService: ObservableObject {
                 } catch {
                     // Log the parsing error for debugging
                     print("❌ JSON parsing failed: \(error)")
-                    if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    if let responseString = String(data: data, encoding: .utf8) {
                         print("📄 Response data: \(responseString)")
                     }
                     // Fallback to mock response
@@ -368,7 +368,7 @@ class SearchService: ObservableObject {
                 } catch {
                     // Log the parsing error for debugging
                     print("❌ Follow-up JSON parsing failed: \(error)")
-                    if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    if let responseString = String(data: data, encoding: .utf8) {
                         print("📄 Follow-up response data: \(responseString)")
                     }
                     throw SearchError.serverError("Failed to parse follow-up response: \(error.localizedDescription)")
