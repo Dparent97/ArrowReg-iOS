@@ -42,6 +42,7 @@ struct SearchView: View {
     @State private var showingHistory = false
     @State private var followUpQuery = ""
     @State private var showingFollowUpInput = false
+    @State private var showScrollToTop = false
     
     // Settings
     @AppStorage("search.history.enabled") private var historyEnabled = true
@@ -128,8 +129,6 @@ struct SearchView: View {
             // Bottom spacer (larger to account for tab bar)
             Spacer()
             
-
-            
             Spacer()
         }
     }
@@ -147,28 +146,100 @@ struct SearchView: View {
             ScrollView(.vertical, showsIndicators: true) {
                 ScrollViewReader { proxy in
                     LazyVStack(spacing: 16) {
-                    if viewModel.isSearching {
-                        searchingView
-                    } else {
-                        ForEach(viewModel.results, id: \.id) { result in
-                            SearchResultCard(result: result) {
-                                viewModel.bookmarkResult(result)
-                            }
-                            .id(result.id)
-                            .clearOnSwipeGesture {
-                                clearPage()
+                        // Top anchor point for scroll-to-top
+                        Color.clear
+                            .frame(height: 1)
+                            .id("top")
+                        
+                        if viewModel.isSearching {
+                            searchingView
+                                .id("searching")
+                        } else {
+                            ForEach(viewModel.results, id: \.id) { result in
+                                SearchResultCard(result: result) {
+                                    viewModel.bookmarkResult(result)
+                                }
+                                .id(result.id)
+                                .clearOnSwipeGesture {
+                                    clearPage()
+                                }
+                                .onAppear {
+                                    // Show scroll to top button when there are multiple results
+                                    showScrollToTop = viewModel.results.count > 1
+                                }
                             }
                         }
-                    }
                     }
                     .padding()
                     .padding(.bottom, 20) // Extra bottom padding for better scrolling
                     
                     // Follow-up question section
                     if !viewModel.results.isEmpty && searchService.isOnlineMode && searchService.currentThreadId != nil {
-                        followUpSection
+                        VStack(spacing: 12) {
+                            // Section header
+                            HStack {
+                                Image(systemName: "bubble.left.and.bubble.right")
+                                    .foregroundColor(.blue)
+                                Text("Ask a follow-up question")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                            }
+                            .padding(.horizontal)
+                            
+                            // Follow-up input
+                            HStack {
+                                TextField("Continue the conversation...", text: $followUpQuery)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .onSubmit {
+                                        performFollowUp()
+                                    }
+                                
+                                Button(action: { performFollowUp() }) {
+                                    Image(systemName: "arrow.up.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(followUpQuery.isEmpty ? .gray : .blue)
+                                }
+                                .disabled(followUpQuery.isEmpty || viewModel.isSearching)
+                            }
+                            .padding(.horizontal)
+                        }
+                        .padding(.vertical)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                        .id("followup-section")
                     }
+                    
+                    // Add extra bottom padding to ensure scrollability
+                    Color.clear
+                        .frame(height: 100)
+                        .id("bottom-spacer")
                 }
+                .overlay(
+                    // Scroll to top button
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            if showScrollToTop && viewModel.results.count > 1 {
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.6)) {
+                                        // We'll handle scroll-to-top in the button itself
+                                    }
+                                }) {
+                                    Image(systemName: "arrow.up.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .background(Circle().fill(.blue))
+                                        .shadow(radius: 4)
+                                }
+                                .padding(.trailing, 20)
+                                .padding(.bottom, 100)
+                            }
+                        }
+                    }
+                )
             }
             .clearOnSwipeGesture {
                 clearPage()
@@ -272,49 +343,13 @@ struct SearchView: View {
         showingOptions = false
     }
     
-    // MARK: - Follow-up Section
-    
-    private var followUpSection: some View {
-        VStack(spacing: 12) {
-            // Section header
-            HStack {
-                Image(systemName: "bubble.left.and.bubble.right")
-                    .foregroundColor(.blue)
-                Text("Ask a follow-up question")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-            .padding(.horizontal)
-            
-            // Follow-up input
-            HStack {
-                TextField("Continue the conversation...", text: $followUpQuery)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onSubmit {
-                        performFollowUp()
-                    }
-                
-                Button(action: performFollowUp) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(followUpQuery.isEmpty ? .gray : .blue)
-                }
-                .disabled(followUpQuery.isEmpty || viewModel.isSearching)
-            }
-            .padding(.horizontal)
-        }
-        .padding(.vertical)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .padding(.horizontal)
-    }
-    
     private func performFollowUp() {
         guard !followUpQuery.isEmpty else { return }
         
         let query = followUpQuery
         followUpQuery = ""
+        
+        // Perform the search - the automatic scrolling will be handled by the view model
         viewModel.performFollowUpSearch(query)
     }
 }
@@ -412,12 +447,9 @@ struct OptionsSheet: View {
     
     @State private var showingClearHistoryConfirmation = false
     
-
-    
     var body: some View {
         NavigationStack {
             List {
-
                 // Search History Section
                 Section("Search History") {
                     Toggle("Save search history", isOn: $historyEnabled)
@@ -728,8 +760,6 @@ struct SearchResultCard: View {
         .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
     }
 }
-
-
 
 #Preview {
     SearchView()
