@@ -112,8 +112,8 @@ export class DocumentManager {
                 throw new Error(`Document ${documentId} not found`);
             }
 
-            // Reinitialize search service to reflect changes
-            await localSearchService.initialize();
+            // Update search index to reflect removal
+            await localSearchService.removeDocument(documentId);
 
             return {
                 success: true,

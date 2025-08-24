@@ -7,6 +7,16 @@ class LocalSearchService {
         this.searchIndex = new Map();
         this.documents = new Map();
         this.initialized = false;
+        // queue to serialize index mutations
+        this.indexQueue = Promise.resolve();
+    }
+
+    // basic mutex/queue for operations that mutate the index
+    async _enqueue(operation) {
+        const result = this.indexQueue.then(() => operation());
+        // ensure queue continues even if operation fails
+        this.indexQueue = result.catch(() => {});
+        return result;
     }
 
     async initialize() {
@@ -28,23 +38,47 @@ class LocalSearchService {
     }
 
     async loadDocument(filePath, documentId) {
-        try {
-            const content = fs.readFileSync(filePath, 'utf8');
-            const sections = this.parseMarkdownSections(content, documentId);
-            
-            this.documents.set(documentId, {
-                id: documentId,
-                title: this.getDocumentTitle(documentId),
-                sections: sections,
-                fullContent: content
-            });
+        return this._enqueue(async () => {
+            try {
+                const content = fs.readFileSync(filePath, 'utf8');
+                const sections = this.parseMarkdownSections(content, documentId);
 
-            // Build search index for this document
-            this.indexDocument(documentId, sections);
-            
-        } catch (error) {
-            console.error(`Failed to load document ${documentId}:`, error);
-        }
+                this.documents.set(documentId, {
+                    id: documentId,
+                    title: this.getDocumentTitle(documentId),
+                    sections: sections,
+                    fullContent: content
+                });
+
+                // Build search index for this document
+                this.indexDocument(documentId, sections);
+
+            } catch (error) {
+                console.error(`Failed to load document ${documentId}:`, error);
+                throw error;
+            }
+        });
+    }
+
+    async removeDocument(documentId) {
+        return this._enqueue(async () => {
+            if (!this.documents.has(documentId)) {
+                return;
+            }
+
+            // remove all entries for this document from the search index
+            for (const [word, entries] of this.searchIndex.entries()) {
+                const filtered = entries.filter(e => e.documentId !== documentId);
+                if (filtered.length > 0) {
+                    this.searchIndex.set(word, filtered);
+                } else {
+                    this.searchIndex.delete(word);
+                }
+            }
+
+            this.documents.delete(documentId);
+            console.log(`Removed document ${documentId} from local search index`);
+        });
     }
 
     parseMarkdownSections(content, documentId) {
