@@ -198,6 +198,7 @@ struct NewsArticle: Identifiable {
 struct ArticleCard: View {
     let article: NewsArticle
     @State private var isBookmarked = false
+    private let bookmarkService = BookmarkService()
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -271,28 +272,14 @@ struct ArticleCard: View {
     }
     
     private func saveArticleToLibrary(_ article: NewsArticle) {
-        // Convert to encodable format
-        let saveData = [
-            "id": article.id,
-            "title": article.title,
-            "summary": article.summary,
-            "source": article.source,
-            "url": article.url,
-            "date": ISO8601DateFormatter().string(from: article.publishedAt)
-        ]
-        
-        var bookmarks = UserDefaults.standard.array(forKey: "BookmarkedArticles") as? [[String: String]] ?? []
-        bookmarks.append(saveData)
-        UserDefaults.standard.set(bookmarks, forKey: "BookmarkedArticles")
-        
-        // Post notification for Library to update
+        let bookmark = BookmarkedArticle(article: article)
+        bookmarkService.save(bookmark, forKey: "BookmarkedArticles")
         NotificationCenter.default.post(name: NSNotification.Name("ArticleBookmarked"), object: article)
     }
-    
+
     private func checkIfBookmarked() {
-        if let bookmarks = UserDefaults.standard.array(forKey: "BookmarkedArticles") as? [[String: String]] {
-            isBookmarked = bookmarks.contains { $0["id"] == article.id }
-        }
+        let bookmarks: [BookmarkedArticle] = bookmarkService.load(forKey: "BookmarkedArticles")
+        isBookmarked = bookmarks.contains { $0.id == article.id }
     }
 }
 

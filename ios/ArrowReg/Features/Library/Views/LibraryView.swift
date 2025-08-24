@@ -6,6 +6,7 @@ struct LibraryView: View {
     @State private var selectedTab = 0
     @State private var bookmarkedSearches: [SearchResult] = []
     @State private var bookmarkedArticles: [BookmarkedArticle] = []
+    private let bookmarkService = BookmarkService()
     
     var body: some View {
         NavigationStack {
@@ -57,13 +58,11 @@ struct LibraryView: View {
             .task {
                 await loadAllContent()
             }
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SearchBookmarked"))) { notification in
-                if let result = notification.object as? SearchResult {
-                    bookmarkedSearches.append(result)
-                }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SearchBookmarked"))) { _ in
+                bookmarkedSearches = bookmarkService.load(forKey: "BookmarkedSearches")
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ArticleBookmarked"))) { _ in
-                loadBookmarkedArticles()
+                bookmarkedArticles = bookmarkService.load(forKey: "BookmarkedArticles")
             }
         }
     }
@@ -181,44 +180,32 @@ struct LibraryView: View {
     
     private func loadAllContent() async {
         await viewModel.loadSavedQueries()
-        loadBookmarkedSearches()
-        loadBookmarkedArticles()
-    }
-    
-    private func loadBookmarkedSearches() {
-        if let bookmarks = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] {
-            bookmarkedSearches = bookmarks.compactMap { data in
-                try? JSONDecoder().decode(SearchResult.self, from: data)
-            }
-        }
-    }
-    
-    private func loadBookmarkedArticles() {
-        if let bookmarks = UserDefaults.standard.array(forKey: "BookmarkedArticles") as? [[String: String]] {
-            bookmarkedArticles = bookmarks.compactMap { dict in
-                guard let id = dict["id"],
-                      let title = dict["title"],
-                      let summary = dict["summary"],
-                      let source = dict["source"],
-                      let url = dict["url"],
-                      let dateString = dict["date"],
-                      let date = ISO8601DateFormatter().date(from: dateString) else {
-                    return nil
-                }
-                return BookmarkedArticle(id: id, title: title, summary: summary, source: source, url: url, date: date)
-            }
-        }
+        bookmarkedSearches = bookmarkService.load(forKey: "BookmarkedSearches")
+        bookmarkedArticles = bookmarkService.load(forKey: "BookmarkedArticles")
     }
 }
 
 // MARK: - Bookmarked Article Model
-struct BookmarkedArticle: Identifiable {
+struct BookmarkedArticle: Identifiable, Codable {
     let id: String
     let title: String
     let summary: String
     let source: String
     let url: String
     let date: Date
+
+    init(id: String, title: String, summary: String, source: String, url: String, date: Date) {
+        self.id = id
+        self.title = title
+        self.summary = summary
+        self.source = source
+        self.url = url
+        self.date = date
+    }
+
+    init(article: NewsArticle) {
+        self.init(id: article.id, title: article.title, summary: article.summary, source: article.source, url: article.url, date: article.publishedAt)
+    }
 }
 
 // MARK: - Bookmarked Cards
