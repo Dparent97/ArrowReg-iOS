@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
-import { handleLocalSearch, handleLocalStreamSearch } from './local-search.js';
+import { handleLocalSearch } from './local-search.js';
+import { sseResponse } from '../utils/sse.js';
 
 /**
  * OpenAI-powered maritime compliance search handler
@@ -341,7 +342,7 @@ export class OpenAISearchHandler {
 export async function handleStreamingSearch(request, env) {
   try {
     const { query, mode = 'qa', context, filters } = await request.json();
-    
+
     if (!query?.trim()) {
       return new Response('Query is required', { status: 400 });
     }
@@ -359,83 +360,33 @@ export async function handleStreamingSearch(request, env) {
 
     const searchHandler = new OpenAISearchHandler(env);
 
-    // Create Server-Sent Events stream
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          // Get the complete response from OpenAI
-          const result = await searchHandler.performSearch(query.trim(), mode, context);
-          
-          if (result.success) {
-            // Simulate streaming by breaking up the response
-            const words = result.message.split(' ');
-            const chunkSize = 3;
-            
-            for (let i = 0; i < words.length; i += chunkSize) {
-              const chunk = words.slice(i, i + chunkSize).join(' ');
-              const data = `data: ${JSON.stringify({
-                type: 'content',
-                data: chunk + (i + chunkSize < words.length ? ' ' : '')
-              })}\n\n`;
-              
-              controller.enqueue(encoder.encode(data));
-              
-              // Small delay to simulate streaming
-              await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            
-            // Send citations
-            for (const citation of result.citations) {
-              const data = `data: ${JSON.stringify({
-                type: 'citation',
-                data: citation
-              })}\n\n`;
-              controller.enqueue(encoder.encode(data));
-            }
-            
-            // Send confidence
-            const confidenceData = `data: ${JSON.stringify({
-              type: 'confidence',
-              data: result.confidence
-            })}\n\n`;
-            controller.enqueue(encoder.encode(confidenceData));
-            
-            // Send completion
-            const doneData = `data: ${JSON.stringify({
-              type: 'done',
-              data: result
-            })}\n\n`;
-            controller.enqueue(encoder.encode(doneData));
-            
-          } else {
-            throw new Error('Search failed');
-          }
-          
-          // Send final done event
-          controller.enqueue(encoder.encode('data: {"type":"stream_end"}\n\n'));
-          controller.close();
-          
-        } catch (error) {
-          console.error('Stream processing error:', error);
-          const errorData = `data: ${JSON.stringify({
-            type: 'error',
-            data: error.message
-          })}\n\n`;
-          controller.enqueue(encoder.encode(errorData));
-          controller.close();
-        }
-      }
-    });
+    return sseResponse(async ({ send, close }) => {
+      try {
+        const result = await searchHandler.performSearch(query.trim(), mode, context);
 
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        if (result.success) {
+          const words = result.message.split(' ');
+          const chunkSize = 3;
+          for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize).join(' ');
+            send('content', chunk + (i + chunkSize < words.length ? ' ' : ''));
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+
+          for (const citation of result.citations) {
+            send('citation', citation);
+          }
+
+          send('confidence', result.confidence);
+          send('done', result);
+        } else {
+          send('error', 'Search failed');
+        }
+      } catch (error) {
+        console.error('Stream processing error:', error);
+        send('error', error.message);
+      } finally {
+        close();
       }
     });
 
@@ -443,9 +394,9 @@ export async function handleStreamingSearch(request, env) {
     console.error('Streaming search error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
+      {
         status: 500,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
         }
@@ -458,94 +409,33 @@ export async function handleStreamingSearch(request, env) {
  * Stream local search results as Server-Sent Events
  */
 async function streamLocalSearchResponse(searchRequest) {
-  try {
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          // Perform local search
-          const result = await handleLocalSearch(searchRequest);
-          
-          // Stream initial searching message
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'content',
-            data: 'Searching offline regulation documents...\n\n'
-          })}\n\n`));
-          
-          // Small delay
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
-          // Stream the answer word by word
-          if (result.answer) {
-            const words = result.answer.split(' ');
-            const chunkSize = 5;
-            
-            for (let i = 0; i < words.length; i += chunkSize) {
-              const chunk = words.slice(i, i + chunkSize).join(' ') + ' ';
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'content',
-                data: chunk
-              })}\n\n`));
-              
-              // Small delay for realistic streaming
-              await new Promise(resolve => setTimeout(resolve, 50));
-            }
-          }
-          
-          // Stream citations
-          for (const citation of result.citations || []) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              type: 'citation',
-              data: citation
-            })}\n\n`));
-          }
-          
-          // Stream confidence
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'confidence',
-            data: result.confidence
-          })}\n\n`));
-          
-          // Signal completion
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'done',
-            data: null
-          })}\n\n`));
-          
-          controller.close();
-          
-        } catch (error) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'error',
-            data: `Local search error: ${error.message}`
-          })}\n\n`));
-          controller.close();
-        }
-      }
-    });
+  return sseResponse(async ({ send, close }) => {
+    try {
+      const result = await handleLocalSearch(searchRequest);
 
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      }
-    });
-    
-  } catch (error) {
-    console.error('Local streaming error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+      send('content', 'Searching offline regulation documents...\n\n');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      if (result.answer) {
+        const words = result.answer.split(' ');
+        const chunkSize = 5;
+        for (let i = 0; i < words.length; i += chunkSize) {
+          const chunk = words.slice(i, i + chunkSize).join(' ') + ' ';
+          send('content', chunk);
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
       }
-    );
-  }
+
+      for (const citation of result.citations || []) {
+        send('citation', citation);
+      }
+
+      send('confidence', result.confidence);
+      send('done', null);
+    } catch (error) {
+      send('error', `Local search error: ${error.message}`);
+    } finally {
+      close();
+    }
+  });
 }
