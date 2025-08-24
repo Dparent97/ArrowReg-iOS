@@ -208,36 +208,18 @@ class SearchService: ObservableObject {
             return createMockSearchResult(for: request, isOffline: false, fallbackReason: "Online service unavailable")
         }
     }
-    
+
     private func searchOnline(_ request: SearchRequest) async throws -> SearchResult {
-        let url = URL(string: "\(baseURL)/api/search")!
-        
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("*/*", forHTTPHeaderField: "Accept")
-        
-        // Add auth header if available
-        if let authToken = getAuthToken() {
-            urlRequest.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        }
-        
-        // Include threadId in the request payload
-        var payload: [String: Any] = [
+        let payload: [String: Any] = [
             "query": request.query,
             "mode": request.mode.rawValue
         ]
-        
-        if let threadId = request.threadId {
-            payload["threadId"] = threadId
-        }
-        
-        do {
-            urlRequest.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        } catch {
-            throw SearchError.invalidQuery
-        }
-        
+        let urlRequest = try makeRequest(
+            path: "/api/search",
+            payload: payload,
+            threadId: request.threadId
+        )
+
         do {
             let (data, response) = try await session.data(for: urlRequest)
             
@@ -299,32 +281,16 @@ class SearchService: ObservableObject {
             throw SearchError.serverError("No active conversation thread")
         }
         
-        // Online mode: use follow-up endpoint
-        let url = URL(string: "\(baseURL)/api/search/followup")!
-        
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("*/*", forHTTPHeaderField: "Accept")
-        
-        // Add auth header if available
-        if let authToken = getAuthToken() {
-            urlRequest.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        }
-        
-        // Create follow-up request payload
-        let followUpPayload: [String: String] = [
+        let payload: [String: Any] = [
             "query": request.query,
-            "threadId": threadId,
             "mode": request.mode.rawValue
         ]
-        
-        do {
-            urlRequest.httpBody = try JSONSerialization.data(withJSONObject: followUpPayload)
-        } catch {
-            throw SearchError.invalidQuery
-        }
-        
+        let urlRequest = try makeRequest(
+            path: "/api/search/followup",
+            payload: payload,
+            threadId: threadId
+        )
+
         do {
             let (data, response) = try await session.data(for: urlRequest)
             
@@ -597,9 +563,35 @@ class SearchService: ObservableObject {
             return false
         }
     }
-    
+
     // MARK: - Private Methods
-    
+
+    private func makeRequest(path: String, payload: [String: Any], threadId: String? = nil) throws -> URLRequest {
+        let url = URL(string: "\(baseURL)\(path)")!
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("*/*", forHTTPHeaderField: "Accept")
+
+        if let authToken = getAuthToken() {
+            urlRequest.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = payload
+        if let threadId = threadId {
+            body["threadId"] = threadId
+        }
+
+        do {
+            urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+        } catch {
+            throw SearchError.invalidQuery
+        }
+
+        return urlRequest
+    }
+
     private func getAuthToken() -> String? {
         // TODO: Implement secure token storage/retrieval
         return nil

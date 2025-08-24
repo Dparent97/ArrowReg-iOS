@@ -15,6 +15,7 @@ class SearchViewModel: ObservableObject {
     private let weatherService: WeatherService
     private var cancellables = Set<AnyCancellable>()
     private var searchTask: Task<Void, Never>?
+    private let bookmarkService = BookmarkService()
     
     let exampleQueries = [
         "What are fire detection requirements for OSVs?",
@@ -35,77 +36,77 @@ class SearchViewModel: ObservableObject {
     }
     
     // MARK: - Search Actions
-    
+
     func performSearch() {
         guard !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
         }
-        
+
         let trimmedQuery = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         saveToRecentSearches(trimmedQuery)
-        
-        isSearching = true
-        error = nil
-        
-        Task { @MainActor in
-            do {
-                let request = SearchRequest(
-                    query: trimmedQuery,
-                    mode: .qa,
-                    filters: filters,
-                    maxResults: 10
-                )
-                
-                let result = try await searchService.search(request)
 
-                self.results = [result]
-                self.isSearching = false
-                
-            } catch let searchError as SearchError {
-                self.error = searchError
-                self.showingError = true
-                self.isSearching = false
-            } catch {
-                self.error = .networkError
-                self.showingError = true
-                self.isSearching = false
-            }
-        }
+        let request = SearchRequest(
+            query: trimmedQuery,
+            mode: .qa,
+            filters: filters,
+            maxResults: 10
+        )
+
+        executeSearch(request: request, followUp: false)
     }
-    
+
     func performFollowUpSearch(_ followUpQuery: String) {
         guard !followUpQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
         }
-        
+
         let trimmedQuery = followUpQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         saveToRecentSearches(trimmedQuery)
-        
+
+        let request = SearchRequest(
+            query: trimmedQuery,
+            mode: .qa,
+            filters: filters,
+            maxResults: 10
+        )
+
+        executeSearch(request: request, followUp: true)
+    }
+
+    private func executeSearch(request: SearchRequest, followUp: Bool) {
         isSearching = true
         error = nil
-        
-        Task { @MainActor in
-            do {
-                let request = SearchRequest(
-                    query: trimmedQuery,
-                    mode: .qa,
-                    filters: filters,
-                    maxResults: 10
-                )
-                
-                let result = try await searchService.searchFollowUp(request)
 
-                self.results.append(result)
-                self.isSearching = false
-                
+        Task {
+            do {
+                let result: SearchResult
+                if followUp {
+                    result = try await searchService.searchFollowUp(request)
+                } else {
+                    result = try await searchService.search(request)
+                }
+
+                await MainActor.run {
+                    if followUp {
+                        self.results.append(result)
+                    } else {
+                        self.results = [result]
+                    }
+                    self.isSearching = false
+                }
+
             } catch let searchError as SearchError {
-                self.error = searchError
-                self.showingError = true
-                self.isSearching = false
+                await MainActor.run {
+                    self.error = searchError
+                    self.showingError = true
+                    self.isSearching = false
+                }
             } catch {
-                self.error = .networkError
-                self.showingError = true
-                self.isSearching = false
+                await MainActor.run {
+                    self.error = .networkError
+                    self.showingError = true
+                    self.isSearching = false
+                }
             }
         }
     }
@@ -256,16 +257,8 @@ class SearchViewModel: ObservableObject {
     // MARK: - Bookmark Support
     
     func bookmarkResult(_ result: SearchResult) {
-        // Save to library
-        var bookmarks = UserDefaults.standard.array(forKey: "BookmarkedSearches") as? [Data] ?? []
-        
-        if let encoded = try? JSONEncoder().encode(result) {
-            bookmarks.append(encoded)
-            UserDefaults.standard.set(bookmarks, forKey: "BookmarkedSearches")
-            
-            // Post notification for Library to update
-            NotificationCenter.default.post(name: NSNotification.Name("SearchBookmarked"), object: result)
-        }
+        bookmarkService.save(result, forKey: "BookmarkedSearches")
+        NotificationCenter.default.post(name: NSNotification.Name("SearchBookmarked"), object: result)
     }
     
     // MARK: - Debounced Search
