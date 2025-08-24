@@ -4,6 +4,7 @@ import { Router } from 'itty-router';
 
 // Import the citation helper module
 import * as citationHelper from './citation-helper.js';
+import ragService from './services/rag.js';
 
 const router = Router();
 
@@ -103,9 +104,15 @@ router.post('/api/search', async (request, env) => {
   let payload = {};
   try { payload = await request.json(); } catch {}
   const { query = '', mode = 'qa' } = payload || {};
-  
+
   if (!query.trim()) {
     return withCORS(request, env, json({ error: 'Query is required' }, 400));
+  }
+
+  // Require JWT authentication for all search requests
+  const auth = await requireJwt(request, env);
+  if (!auth.ok) {
+    return withCORS(request, env, json({ error: auth.error }, 401));
   }
 
   // Generate cache key from normalized query
@@ -127,12 +134,13 @@ router.post('/api/search', async (request, env) => {
     console.log('Cache read error:', error);
   }
 
-  // Check if OpenAI is configured
+  // If OpenAI is not configured, fall back to local RAG search
   if (!env.OPENAI_API_KEY || !env.OPENAI_ASSISTANT_ID) {
-    return withCORS(request, env, json({ 
-      error: 'OpenAI not configured',
-      message: 'OpenAI API key or Assistant ID missing'
-    }, 500));
+    const localResults = await ragService.search(query, 8);
+    return withCORS(request, env, json({
+      results: localResults,
+      source: 'local'
+    }));
   }
 
   try {
@@ -335,29 +343,11 @@ router.post('/api/search', async (request, env) => {
 
   } catch (error) {
     console.error('OpenAI API error:', error);
-    
-    // Fallback to enhanced mock response
-    const weatherKeywords = ['weather', 'storm', 'wind', 'wave', 'rough', 'sea'];
-    const isWeatherQuery = weatherKeywords.some(keyword => 
-      query.toLowerCase().includes(keyword)
-    );
-    
-    let mockAnswer = "I found information related to your query about maritime regulations. (OpenAI temporarily unavailable)";
-    
-    if (isWeatherQuery) {
-      mockAnswer = "Weather routing and storm procedures are governed by multiple CFR sections. For rough seas, 46 CFR 109 requires OSVs to have appropriate stability and weathertight integrity. Storm shelter requirements vary by vessel type and route, with specific provisions in 46 CFR 199 for emergency equipment and procedures during severe weather conditions. (OpenAI temporarily unavailable)";
-    }
-    
+    const localResults = await ragService.search(query, 8);
     return withCORS(request, env, json({
-      ok: true,
-      mode,
-      query,
-      answer: mockAnswer,
-      isWeatherRelated: isWeatherQuery,
-      assistantId: env.OPENAI_ASSISTANT_ID || null,
-      vectorStores: (env.VECTOR_STORE_IDS || '').split(',').filter(Boolean),
-      fallback: true,
-      error: error.message
+      results: localResults,
+      source: 'local',
+      error: 'remote_failure'
     }));
   }
 });
@@ -376,12 +366,13 @@ router.post('/api/search/followup', async (request, env) => {
     return withCORS(request, env, json({ error: 'Thread ID is required for follow-up questions' }, 400));
   }
 
-  // Check if OpenAI is configured
+  // If OpenAI is not configured, fall back to local RAG search
   if (!env.OPENAI_API_KEY || !env.OPENAI_ASSISTANT_ID) {
-    return withCORS(request, env, json({ 
-      error: 'OpenAI not configured',
-      message: 'OpenAI API key or Assistant ID missing'
-    }, 500));
+    const localResults = await ragService.search(query, 8);
+    return withCORS(request, env, json({
+      results: localResults,
+      source: 'local'
+    }));
   }
 
   try {
@@ -534,12 +525,13 @@ router.post('/api/search/followup', async (request, env) => {
 
   } catch (error) {
     console.error('OpenAI follow-up API error:', error);
-    
+    const localResults = await ragService.search(query, 8);
     return withCORS(request, env, json({
-      error: 'Follow-up question failed',
-      message: error.message,
-      threadId: threadId
-    }, 500));
+      results: localResults,
+      source: 'local',
+      threadId: threadId,
+      error: 'remote_failure'
+    }));
   }
 });
 

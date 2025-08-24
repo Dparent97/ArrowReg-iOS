@@ -1,0 +1,32 @@
+[
+  {
+    "id": "46-109-0-109.213",
+    "title": "46",
+    "part": "109",
+    "subpart": "",
+    "section": "109.213",
+    "text": "Fire detection systems. Each OSV must be fitted with an automatic fire detection and alarm system covering machinery, accommodation, service spaces, control stations, and cargo pump-rooms.",
+    "bge": [0.1, 0.2, 0.3],
+    "openai": [0.2, 0.1, 0.0]
+  },
+  {
+    "id": "33-151-0-151.10",
+    "title": "33",
+    "part": "151",
+    "subpart": "",
+    "section": "151.10",
+    "text": "Discharge of oil or oily waste into navigable waters or the contiguous zone is prohibited except under specific conditions and must be reported immediately to the National Response Center.",
+    "bge": [0.3, 0.1, 0.2],
+    "openai": [0.0, 0.1, 0.2]
+  },
+  {
+    "id": "46-199-0-199.50",
+    "title": "46",
+    "part": "199",
+    "subpart": "",
+    "section": "199.50",
+    "text": "Each vessel must carry survival craft sufficient for 100 percent of persons on board, including automatically inflatable life rafts equipped with emergency equipment.",
+    "bge": [0.2, 0.2, 0.1],
+    "openai": [0.1, 0.0, 0.2]
+  }
+]
