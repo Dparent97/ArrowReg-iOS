@@ -7,24 +7,44 @@ class LocalSearchService {
         this.searchIndex = new Map();
         this.documents = new Map();
         this.initialized = false;
+        // Simple mutex to ensure index updates are processed sequentially
+        this.indexMutex = Promise.resolve();
+    }
+
+    async withIndexLock(fn) {
+        const release = this.indexMutex;
+        let resolveNext;
+        this.indexMutex = new Promise(resolve => {
+            resolveNext = resolve;
+        });
+        await release;
+        try {
+            return await fn();
+        } finally {
+            resolveNext();
+        }
     }
 
     async initialize() {
         if (this.initialized) return;
 
-        const documentsPath = path.join(process.cwd(), '..', 'data-local');
-        
-        try {
-            await this.loadDocument(path.join(documentsPath, 'ABS-Part-7-Structured.md'), 'abs_part7');
-            await this.loadDocument(path.join(documentsPath, 'ECFR-title33.md'), 'cfr33');
-            await this.loadDocument(path.join(documentsPath, 'ECFR-title46.md'), 'cfr46');
-            
-            console.log(`Loaded ${this.documents.size} documents for local search`);
-            this.initialized = true;
-        } catch (error) {
-            console.error('Failed to initialize local search:', error);
-            throw error;
-        }
+        await this.withIndexLock(async () => {
+            if (this.initialized) return;
+
+            const documentsPath = path.join(process.cwd(), '..', 'data-local');
+
+            try {
+                await this.loadDocument(path.join(documentsPath, 'ABS-Part-7-Structured.md'), 'abs_part7');
+                await this.loadDocument(path.join(documentsPath, 'ECFR-title33.md'), 'cfr33');
+                await this.loadDocument(path.join(documentsPath, 'ECFR-title46.md'), 'cfr46');
+
+                console.log(`Loaded ${this.documents.size} documents for local search`);
+                this.initialized = true;
+            } catch (error) {
+                console.error('Failed to initialize local search:', error);
+                throw error;
+            }
+        });
     }
 
     async loadDocument(filePath, documentId) {
@@ -288,8 +308,32 @@ class LocalSearchService {
     }
 
     async addDocument(filePath, documentId) {
-        await this.loadDocument(filePath, documentId);
+        await this.withIndexLock(async () => {
+            await this.loadDocument(filePath, documentId);
+        });
         console.log(`Added document ${documentId} to local search index`);
+    }
+
+    async removeDocument(documentId) {
+        await this.withIndexLock(async () => {
+            if (!this.documents.has(documentId)) {
+                return;
+            }
+
+            // Remove document entry
+            this.documents.delete(documentId);
+
+            // Remove all index references
+            for (const [word, entries] of this.searchIndex.entries()) {
+                const filtered = entries.filter(entry => entry.documentId !== documentId);
+                if (filtered.length === 0) {
+                    this.searchIndex.delete(word);
+                } else if (filtered.length !== entries.length) {
+                    this.searchIndex.set(word, filtered);
+                }
+            }
+        });
+        console.log(`Removed document ${documentId} from local search index`);
     }
 
     getAvailableDocuments() {
