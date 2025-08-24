@@ -29,7 +29,7 @@ class LocalSearchService {
 
     async loadDocument(filePath, documentId) {
         try {
-            const content = fs.readFileSync(filePath, 'utf8');
+            const content = await fs.promises.readFile(filePath, 'utf8');
             const sections = this.parseMarkdownSections(content, documentId);
             
             this.documents.set(documentId, {
@@ -44,6 +44,7 @@ class LocalSearchService {
             
         } catch (error) {
             console.error(`Failed to load document ${documentId}:`, error);
+            throw error;
         }
     }
 

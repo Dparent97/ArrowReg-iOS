@@ -47,12 +47,12 @@ export class DocumentManager {
             const filePath = path.join(this.documentsPath, processedFileName);
             
             if (extension === '.pdf') {
-                fs.writeFileSync(filePath, fileBuffer);
+                await fs.promises.writeFile(filePath, fileBuffer);
                 // Also save extracted content as markdown
                 const mdPath = path.join(this.documentsPath, `${documentId}.md`);
-                fs.writeFileSync(mdPath, content, 'utf8');
+                await fs.promises.writeFile(mdPath, content, 'utf8');
             } else {
-                fs.writeFileSync(filePath, content, 'utf8');
+                await fs.promises.writeFile(filePath, content, 'utf8');
             }
 
             // Add to search index
@@ -73,7 +73,7 @@ export class DocumentManager {
                 ...metadata
             };
             
-            fs.writeFileSync(metadataPath, JSON.stringify(fullMetadata, null, 2));
+            await fs.promises.writeFile(metadataPath, JSON.stringify(fullMetadata, null, 2));
 
             return {
                 success: true,
@@ -102,9 +102,11 @@ export class DocumentManager {
 
             let removed = false;
             for (const file of files) {
-                if (fs.existsSync(file)) {
-                    fs.unlinkSync(file);
+                try {
+                    await fs.promises.unlink(file);
                     removed = true;
+                } catch (err) {
+                    if (err.code !== 'ENOENT') throw err;
                 }
             }
 
@@ -131,14 +133,14 @@ export class DocumentManager {
      */
     async listDocuments() {
         try {
-            const files = fs.readdirSync(this.documentsPath);
+            const files = await fs.promises.readdir(this.documentsPath);
             const metaFiles = files.filter(f => f.endsWith('.meta.json'));
             
             const documents = [];
             for (const metaFile of metaFiles) {
                 try {
                     const metaPath = path.join(this.documentsPath, metaFile);
-                    const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                    const metadata = JSON.parse(await fs.promises.readFile(metaPath, 'utf8'));
                     documents.push(metadata);
                 } catch (error) {
                     console.warn(`Failed to read metadata for ${metaFile}:`, error);
@@ -166,12 +168,14 @@ export class DocumentManager {
     async getDocument(documentId) {
         try {
             const metaPath = path.join(this.documentsPath, `${documentId}.meta.json`);
-            if (!fs.existsSync(metaPath)) {
+            try {
+                await fs.promises.access(metaPath);
+            } catch {
                 throw new Error(`Document ${documentId} not found`);
             }
 
-            const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-            
+            const metadata = JSON.parse(await fs.promises.readFile(metaPath, 'utf8'));
+
             // Try to read content file
             const possibleFiles = [
                 path.join(this.documentsPath, `${documentId}.md`),
@@ -180,9 +184,11 @@ export class DocumentManager {
 
             let content = '';
             for (const file of possibleFiles) {
-                if (fs.existsSync(file)) {
-                    content = fs.readFileSync(file, 'utf8');
+                try {
+                    content = await fs.promises.readFile(file, 'utf8');
                     break;
+                } catch (err) {
+                    if (err.code !== 'ENOENT') throw err;
                 }
             }
 
@@ -255,11 +261,13 @@ export class DocumentManager {
      */
     async bulkImport(importPath, documentType) {
         try {
-            if (!fs.existsSync(importPath)) {
+            try {
+                await fs.promises.access(importPath);
+            } catch {
                 throw new Error(`Import path does not exist: ${importPath}`);
             }
 
-            const files = fs.readdirSync(importPath)
+            const files = (await fs.promises.readdir(importPath))
                 .filter(f => {
                     const ext = path.parse(f).ext.toLowerCase().substring(1);
                     return this.supportedTypes.includes(ext);
@@ -272,7 +280,7 @@ export class DocumentManager {
             for (const fileName of files) {
                 try {
                     const filePath = path.join(importPath, fileName);
-                    const fileBuffer = fs.readFileSync(filePath);
+                    const fileBuffer = await fs.promises.readFile(filePath);
                     
                     const result = await this.addDocument(fileBuffer, fileName, documentType);
                     results.push(result);
