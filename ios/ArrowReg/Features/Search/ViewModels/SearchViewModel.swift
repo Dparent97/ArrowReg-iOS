@@ -35,77 +35,65 @@ class SearchViewModel: ObservableObject {
     }
     
     // MARK: - Search Actions
-    
+
     func performSearch() {
         guard !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
         }
-        
+
         let trimmedQuery = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         saveToRecentSearches(trimmedQuery)
-        
-        isSearching = true
-        error = nil
-        
-        Task {
-            do {
-                let request = SearchRequest(
-                    query: trimmedQuery,
-                    mode: .qa,
-                    filters: filters,
-                    maxResults: 10
-                )
-                
-                let result = try await searchService.search(request)
-                
-                await MainActor.run {
-                    self.results = [result]
-                    self.isSearching = false
-                }
-                
-            } catch let searchError as SearchError {
-                await MainActor.run {
-                    self.error = searchError
-                    self.showingError = true
-                    self.isSearching = false
-                }
-            } catch {
-                await MainActor.run {
-                    self.error = .networkError
-                    self.showingError = true
-                    self.isSearching = false
-                }
-            }
-        }
+
+        let request = SearchRequest(
+            query: trimmedQuery,
+            mode: .qa,
+            filters: filters,
+            maxResults: 10
+        )
+
+        executeSearch(request: request, followUp: false)
     }
-    
+
     func performFollowUpSearch(_ followUpQuery: String) {
         guard !followUpQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
         }
-        
+
         let trimmedQuery = followUpQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         saveToRecentSearches(trimmedQuery)
-        
+
+        let request = SearchRequest(
+            query: trimmedQuery,
+            mode: .qa,
+            filters: filters,
+            maxResults: 10
+        )
+
+        executeSearch(request: request, followUp: true)
+    }
+
+    private func executeSearch(request: SearchRequest, followUp: Bool) {
         isSearching = true
         error = nil
-        
+
         Task {
             do {
-                let request = SearchRequest(
-                    query: trimmedQuery,
-                    mode: .qa,
-                    filters: filters,
-                    maxResults: 10
-                )
-                
-                let result = try await searchService.searchFollowUp(request)
-                
+                let result: SearchResult
+                if followUp {
+                    result = try await searchService.searchFollowUp(request)
+                } else {
+                    result = try await searchService.search(request)
+                }
+
                 await MainActor.run {
-                    self.results.append(result)
+                    if followUp {
+                        self.results.append(result)
+                    } else {
+                        self.results = [result]
+                    }
                     self.isSearching = false
                 }
-                
+
             } catch let searchError as SearchError {
                 await MainActor.run {
                     self.error = searchError
