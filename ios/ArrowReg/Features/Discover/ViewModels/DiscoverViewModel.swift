@@ -32,27 +32,23 @@ class DiscoverViewModel: ObservableObject {
         isLoading = true
         error = nil
         
-        Task {
+        Task { @MainActor in
             do {
                 async let featuredTask = loadFeaturedContent()
                 async let categoriesTask = loadCategories()
                 async let updatesTask = loadRecentUpdates()
                 
                 let (featured, categories, updates) = try await (featuredTask, categoriesTask, updatesTask)
-                
-                await MainActor.run {
-                    self.featuredContent = featured
-                    self.categories = categories
-                    self.recentUpdates = updates
-                    self.isLoading = false
-                }
+
+                self.featuredContent = featured
+                self.categories = categories
+                self.recentUpdates = updates
+                self.isLoading = false
                 
             } catch {
-                await MainActor.run {
-                    self.error = .loadingFailed(error.localizedDescription)
-                    self.showingError = true
-                    self.isLoading = false
-                }
+                self.error = .loadingFailed(error.localizedDescription)
+                self.showingError = true
+                self.isLoading = false
             }
         }
     }

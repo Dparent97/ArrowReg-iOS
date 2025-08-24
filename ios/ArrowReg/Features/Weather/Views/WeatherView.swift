@@ -66,7 +66,7 @@ struct WeatherView: View {
                         
                         Button("Refresh", systemImage: "arrow.clockwise") {
                             if let location = weatherService.currentWeatherData?.location {
-                                Task {
+                                Task { @MainActor in
                                     try? await weatherService.fetchWeather(
                                         for: location.coordinate,
                                         locationName: location.name
@@ -82,7 +82,7 @@ struct WeatherView: View {
             .sheet(isPresented: $showingLocationSearch) {
                 LocationSearchView { location in
                     selectedLocation = location
-                    Task {
+                    Task { @MainActor in
                         try? await weatherService.fetchWeather(
                             for: location.coordinate,
                             locationName: location.name
@@ -105,7 +105,7 @@ struct WeatherView: View {
             .onChange(of: preferences.units) { _, newUnits in
                 // Refresh weather data when units change to get data in correct units from API
                 if let location = weatherService.currentWeatherData?.location {
-                    Task {
+                    Task { @MainActor in
                         try? await weatherService.fetchWeather(
                             for: location.coordinate,
                             locationName: location.name
@@ -616,18 +616,14 @@ struct LocationSearchView: View {
         
         isSearching = true
         
-        Task {
+        Task { @MainActor in
             do {
                 let results = try await WeatherService.shared.searchLocations(searchText)
-                await MainActor.run {
-                    self.searchResults = results
-                    self.isSearching = false
-                }
+                self.searchResults = results
+                self.isSearching = false
             } catch {
-                await MainActor.run {
-                    self.searchResults = []
-                    self.isSearching = false
-                }
+                self.searchResults = []
+                self.isSearching = false
             }
         }
     }
