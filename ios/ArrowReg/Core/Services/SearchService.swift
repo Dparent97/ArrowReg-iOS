@@ -7,11 +7,49 @@ struct BackendSearchResponse: Codable {
     let mode: String
     let query: String
     let answer: String
-    let citations: [Citation]?
+    let citations: [BackendCitation]?
     let isWeatherRelated: Bool?
     let assistantId: String?
     let vectorStores: [String]?
     let threadId: String?
+}
+
+struct BackendCitation: Codable {
+    let id: String
+    let title: String
+    let section: String
+    let source: String  // API returns string like "cfr46", "cfr33"
+    let url: String?
+    let filename: String?
+    let fileId: String?
+    let relevanceScore: Double
+    
+    // Convert to iOS Citation format
+    func toCitation() -> Citation {
+        // Map backend source strings to iOS RegulationSource enum
+        let regulationSource: RegulationSource
+        switch source.lowercased() {
+        case "cfr46", "46cfr":
+            regulationSource = .cfr46
+        case "cfr33", "33cfr":
+            regulationSource = .cfr33
+        case "abs":
+            regulationSource = .abs
+        case "nvic":
+            regulationSource = .nvic
+        default:
+            regulationSource = .cfr46 // Default fallback
+        }
+        
+        return Citation(
+            id: id,
+            title: title,
+            section: section,
+            source: regulationSource,
+            url: url,
+            relevanceScore: relevanceScore
+        )
+    }
 }
 
 // MARK: - Stream Response Models
@@ -238,10 +276,13 @@ class SearchService: ObservableObject {
                         self.currentThreadId = threadId
                     }
                     
+                    // Convert backend citations to iOS citation format
+                    let iosCitations = backendResponse.citations?.map { $0.toCitation() } ?? []
+                    
                     return SearchResult(
                         query: request.query,
                         answer: backendResponse.answer,
-                        citations: backendResponse.citations ?? [],
+                        citations: iosCitations,
                         confidence: 85,
                         isComplete: true,
                         isOffline: false
@@ -304,10 +345,13 @@ class SearchService: ObservableObject {
                 do {
                     let backendResponse = try JSONDecoder().decode(BackendSearchResponse.self, from: data)
                     
+                    // Convert backend citations to iOS citation format
+                    let iosCitations = backendResponse.citations?.map { $0.toCitation() } ?? []
+                    
                     return SearchResult(
                         query: request.query,
                         answer: backendResponse.answer,
-                        citations: backendResponse.citations ?? [],
+                        citations: iosCitations,
                         confidence: 85,
                         isComplete: true,
                         isOffline: false
