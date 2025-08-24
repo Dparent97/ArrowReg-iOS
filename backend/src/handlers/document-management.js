@@ -138,7 +138,7 @@ export class DocumentManager {
             for (const metaFile of metaFiles) {
                 try {
                     const metaPath = path.join(this.documentsPath, metaFile);
-                    const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                    const metadata = JSON.parse(await fs.promises.readFile(metaPath, 'utf8'));
                     documents.push(metadata);
                 } catch (error) {
                     console.warn(`Failed to read metadata for ${metaFile}:`, error);
@@ -170,7 +170,7 @@ export class DocumentManager {
                 throw new Error(`Document ${documentId} not found`);
             }
 
-            const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const metadata = JSON.parse(await fs.promises.readFile(metaPath, 'utf8'));
             
             // Try to read content file
             const possibleFiles = [
@@ -181,7 +181,7 @@ export class DocumentManager {
             let content = '';
             for (const file of possibleFiles) {
                 if (fs.existsSync(file)) {
-                    content = fs.readFileSync(file, 'utf8');
+                    content = await fs.promises.readFile(file, 'utf8');
                     break;
                 }
             }
@@ -272,7 +272,7 @@ export class DocumentManager {
             for (const fileName of files) {
                 try {
                     const filePath = path.join(importPath, fileName);
-                    const fileBuffer = fs.readFileSync(filePath);
+                    const fileBuffer = await fs.promises.readFile(filePath);
                     
                     const result = await this.addDocument(fileBuffer, fileName, documentType);
                     results.push(result);
